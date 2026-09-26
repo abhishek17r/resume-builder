@@ -1,0 +1,262 @@
+import { useEffect, useState } from 'react'
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { sampleResume, blankResume, uid, blankEntry, DEFAULT_SETTINGS } from './defaults'
+import { idbStorage } from './storage'
+import { SECTION_TYPES } from './sections'
+import { applyEditTo } from './optimize/apply'
+
+const HISTORY_LIMIT = 100
+const COALESCE_MS = 600
+
+// Every edit goes through `mutate`, which snapshots the current resume for undo.
+// Consecutive edits with the same `key` inside COALESCE_MS collapse into one step
+// so typing a word doesn't create one undo step per character.
+export const useStore = create(
+  persist(
+    (set, get) => {
+      const first = sampleResume()
+
+      const mutate = (fn, key) => set(state => {
+        const idx = state.resumes.findIndex(r => r.id === state.currentId)
+        if (idx < 0) return state
+        const before = state.resumes[idx]
+        const draft = structuredClone(before)
+        fn(draft)
+        draft.updatedAt = Date.now()
+        const resumes = state.resumes.slice()
+        resumes[idx] = draft
+        const now = Date.now()
+        const coalesce = key && state._lastKey === key && now - state._lastAt < COALESCE_MS
+        const past = coalesce ? state.past : [...state.past, before].slice(-HISTORY_LIMIT)
+        return { resumes, past, future: [], _lastKey: key, _lastAt: now }
+      })
+
+      const section = (r, id) => r.sections.find(s => s.id === id)
+
+      return {
+        resumes: [first],
+        currentId: first.id,
+        past: [],
+        future: [],
+        _lastKey: null,
+        _lastAt: 0,
+
+        current: () => get().resumes.find(r => r.id === get().currentId) ?? get().resumes[0],
+
+        // ----- history -----
+        undo: () => set(state => {
+          if (!state.past.length) return state
+          const prev = state.past[state.past.length - 1]
+          const cur = state.resumes.find(r => r.id === prev.id)
+          return {
+            past: state.past.slice(0, -1),
+            future: [cur, ...state.future],
+            resumes: state.resumes.map(r => (r.id === prev.id ? prev : r)),
+            _lastKey: null,
+          }
+        }),
+        redo: () => set(state => {
+          if (!state.future.length) return state
+          const next = state.future[0]
+          const cur = state.resumes.find(r => r.id === next.id)
+          return {
+            future: state.future.slice(1),
+            past: [...state.past, cur],
+            resumes: state.resumes.map(r => (r.id === next.id ? next : r)),
+            _lastKey: null,
+          }
+        }),
+
+        // ----- resumes -----
+        selectResume: id => set({ currentId: id, past: [], future: [] }),
+        // from: 'blank' | 'sample' | 'current' (a new version copied from the open resume)
+        // from: 'blank' | 'sample' | 'current' | 'copy' (with sourceId: copy any resume as a new version)
+        createResume: ({ from = 'blank', name, label, sourceId } = {}) => {
+          const state = get()
+          let r
+          const source = from === 'copy' ? state.resumes.find(x => x.id === sourceId) : from === 'current' ? state.current() : null
+          if (source) {
+            const src = source
+            r = { ...structuredClone(src), id: uid(), name: name || nextVersionName(src.name, state.resumes), updatedAt: Date.now() }
+          } else {
+            r = from === 'sample' ? sampleResume() : blankResume()
+            r.name = name || `Resume ${state.resumes.length + 1}`
+          }
+          if (label !== undefined) r.label = label
+          set({ resumes: [...state.resumes, r], currentId: r.id, past: [], future: [] })
+          return r.id
+        },
+        // Adds a fully formed resume (import) and opens it.
+        addResume: resume => {
+          const r = { ...resume, id: uid(), updatedAt: Date.now() }
+          r.settings = { ...DEFAULT_SETTINGS, ...r.settings, applyAccent: { ...DEFAULT_SETTINGS.applyAccent, ...r.settings?.applyAccent } }
+          set(state => ({ resumes: [...state.resumes, r], currentId: r.id, past: [], future: [] }))
+          return r.id
+        },
+        duplicateResume: id => set(state => {
+          const src = state.resumes.find(r => r.id === id)
+          const copy = { ...structuredClone(src), id: uid(), name: nextVersionName(src.name, state.resumes), updatedAt: Date.now() }
+          return { resumes: [...state.resumes, copy], currentId: copy.id, past: [], future: [] }
+        }),
+        // Deleting everything is allowed; the app then shows an empty Overview.
+        deleteResume: id => get().deleteResumes([id]),
+        deleteResumes: ids => set(state => {
+          const drop = new Set(ids)
+          const resumes = state.resumes.filter(r => !drop.has(r.id))
+          const currentId = drop.has(state.currentId) ? (resumes[0]?.id ?? null) : state.currentId
+          return { resumes, currentId, past: [], future: [] }
+        }),
+        renameResume: (id, name) => set(state => ({
+          resumes: state.resumes.map(r => (r.id === id ? { ...r, name } : r)),
+        })),
+        // Optional free-text tag, e.g. "b2c - google", for telling versions apart.
+        setLabel: (id, label) => set(state => ({
+          resumes: state.resumes.map(r => (r.id === id ? { ...r, label: label.trim() } : r)),
+        })),
+
+        // ----- personal details -----
+        setPersonal: (key, value) => mutate(r => { r.personal[key] = value }, `personal.${key}`),
+        addLink: type => mutate(r => { r.personal.links.push({ id: uid(), type, value: '' }) }),
+        setLink: (id, value) => mutate(r => { r.personal.links.find(l => l.id === id).value = value }, `link.${id}`),
+        removeLink: id => mutate(r => { r.personal.links = r.personal.links.filter(l => l.id !== id) }),
+
+        // ----- sections -----
+        addSection: type => {
+          const id = uid()
+          const def = SECTION_TYPES[type]
+          mutate(r => {
+            const rightTypes = ['experience', 'projects', 'organisations', 'publications', 'custom']
+            r.sections.push({
+              id, type, heading: def.label, hidden: false,
+              column: rightTypes.includes(type) ? 'right' : 'left',
+              entries: def.single ? [blankEntry(type)] : [],
+            })
+          })
+          return id
+        },
+        removeSection: id => mutate(r => { r.sections = r.sections.filter(s => s.id !== id) }),
+        renameSection: (id, heading) => mutate(r => { section(r, id).heading = heading }, `heading.${id}`),
+        toggleSectionHidden: id => mutate(r => { const s = section(r, id); s.hidden = !s.hidden }),
+        setSectionColumn: (id, column) => mutate(r => { section(r, id).column = column }),
+        moveSection: (from, to) => mutate(r => {
+          const [s] = r.sections.splice(from, 1)
+          r.sections.splice(to, 0, s)
+        }),
+
+        // ----- entries -----
+        addEntry: sectionId => {
+          let id
+          mutate(r => {
+            const s = section(r, sectionId)
+            const e = blankEntry(s.type)
+            id = e.id
+            s.entries.push(e)
+          })
+          return id
+        },
+        setEntry: (sectionId, entryId, key, value) => mutate(r => {
+          section(r, sectionId).entries.find(e => e.id === entryId)[key] = value
+        }, `entry.${entryId}.${key}`),
+        removeEntry: (sectionId, entryId) => mutate(r => {
+          const s = section(r, sectionId)
+          s.entries = s.entries.filter(e => e.id !== entryId)
+        }),
+        toggleEntryHidden: (sectionId, entryId) => mutate(r => {
+          const e = section(r, sectionId).entries.find(x => x.id === entryId)
+          e.hidden = !e.hidden
+        }),
+        moveEntry: (sectionId, from, to) => mutate(r => {
+          const list = section(r, sectionId).entries
+          const [e] = list.splice(from, 1)
+          list.splice(to, 0, e)
+        }),
+
+        // ----- settings -----
+        setSetting: (key, value) => mutate(r => { r.settings[key] = value }, `setting.${key}`),
+        setAccentTarget: (key, value) => mutate(r => { r.settings.applyAccent[key] = value }),
+        resetSettings: () => mutate(r => { r.settings = structuredClone(DEFAULT_SETTINGS) }),
+        applyPreset: preset => mutate(r => { Object.assign(r.settings, structuredClone(preset)) }),
+        // A template replaces the whole look: design settings go back to defaults, then the template applies.
+        applyTemplate: (template, keepKeys) => mutate(r => {
+          const kept = Object.fromEntries(keepKeys.map(k => [k, r.settings[k]]))
+          r.settings = { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(template.settings), ...kept, templateId: template.id }
+        }),
+
+        // ----- optimise -----
+        // Per-resume optimiser state (ignored issues, job description, analysis, decisions). Not part of undo history.
+        setOptimize: patch => set(state => ({
+          resumes: state.resumes.map(r => (r.id === state.currentId ? { ...r, optimize: { ...(r.optimize ?? {}), ...patch } } : r)),
+        })),
+        ignoreIssue: (id, ignored = true) => set(state => ({
+          resumes: state.resumes.map(r => {
+            if (r.id !== state.currentId) return r
+            const list = new Set(r.optimize?.ignored ?? [])
+            if (ignored) list.add(id)
+            else list.delete(id)
+            return { ...r, optimize: { ...(r.optimize ?? {}), ignored: [...list] } }
+          }),
+        })),
+        // Apply one edit (AI suggestion, rewrite or auto-fix) to the open resume. Undoable.
+        applyEdit: edit => {
+          let ok = false
+          mutate(r => { ok = applyEditTo(r, edit) })
+          return ok
+        },
+        // Copy a resume, apply edits to the copy, label it, and open it.
+        createTailoredCopy: ({ sourceId, edits, name, label }) => {
+          const state = get()
+          const src = state.resumes.find(r => r.id === sourceId) ?? state.current()
+          const copy = { ...structuredClone(src), id: uid(), name: name || nextVersionName(src.name, state.resumes), label: label ?? src.label, updatedAt: Date.now() }
+          for (const e of edits) applyEditTo(copy, e)
+          set({ resumes: [...state.resumes, copy], currentId: copy.id, past: [], future: [] })
+          return copy.id
+        },
+
+        // ----- UI focus (not persisted): open a specific entry in the Content editor -----
+        focus: null,
+        setFocus: focus => set({ focus }),
+        pageCount: 1,
+        setPageCount: pageCount => set(state => (state.pageCount === pageCount ? state : { pageCount })),
+      }
+    },
+    {
+      name: 'resume-builder',
+      storage: createJSONStorage(() => idbStorage),
+      partialize: s => ({ resumes: s.resumes, currentId: s.currentId }),
+      // Fill in any settings added after a resume was first saved.
+      merge: (persisted, current) => {
+        const merged = { ...current, ...persisted }
+        merged.resumes = (merged.resumes ?? current.resumes).map(r => ({
+          ...r,
+          settings: { ...DEFAULT_SETTINGS, ...r.settings, applyAccent: { ...DEFAULT_SETTINGS.applyAccent, ...r.settings?.applyAccent } },
+        }))
+        return merged
+      },
+    },
+  ),
+)
+
+// "Product Designer" → "Product Designer (v2)"; "Product Designer (v2)" → "Product Designer (v3)"
+function nextVersionName(name, resumes) {
+  const base = name.replace(/\s*\(v\d+\)$/, '')
+  const taken = new Set(resumes.map(r => r.name))
+  let n = 2
+  while (taken.has(`${base} (v${n})`)) n++
+  return `${base} (v${n})`
+}
+
+export const useHydrated = () => {
+  const [done, setDone] = useState(useStore.persist.hasHydrated())
+  useEffect(() => {
+    if (useStore.persist.hasHydrated()) setDone(true)
+    return useStore.persist.onFinishHydration(() => setDone(true))
+  }, [])
+  return done
+}
+
+// The open resume, or undefined when there are none.
+export const useResume = () => useStore(s => s.resumes.find(r => r.id === s.currentId) ?? s.resumes[0])
+
+// Handy for debugging in the browser console during development.
+if (import.meta.env.DEV) window.__store = useStore
