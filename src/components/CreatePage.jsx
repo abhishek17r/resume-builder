@@ -48,7 +48,10 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
       setImp({ status: 'ready', file, ...result })
     } catch (err) {
       console.error(err)
-      setImp({ status: 'error', file, error: err.message || 'Something went wrong reading that file.' })
+      // The file readers load on demand; if the app was updated or its server restarted since the page
+      // loaded, that load fails. A reload fixes it.
+      const stale = /dynamically imported module|Importing a module script failed|error loading dynamically/i.test(err.message || '')
+      setImp({ status: 'error', file, error: stale ? 'The app was updated or restarted since this page loaded. Reload the page and try again.' : err.message || 'Something went wrong reading that file.' })
     }
   }
 
