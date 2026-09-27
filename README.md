@@ -17,7 +17,7 @@ A resume editor that runs in the browser: write your content, pick a design, and
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173 (or pass --port)
+npm run dev          # http://localhost:5190
 ```
 
 The Optimize tab's AI features call **[resume-builder-api](../resume-builder-api)** (Node + Claude API). Start it alongside the frontend; set `VITE_API_URL` if it isn't on `http://localhost:8787`. Quality checks work without it.
