@@ -19,7 +19,9 @@ const WEAK_OPENERS = /^(responsible for|responsibilities included|duties include
 const FIRST_PERSON = /\b(I|me|my|mine|myself)\b/
 const CLICHES = ['team player', 'hard worker', 'hard-working', 'go-getter', 'detail-oriented', 'results-driven', 'self-starter', 'think outside the box', 'synergy', 'dynamic', 'passionate about', 'proven track record', 'best of breed', 'go-to person', 'value add', 'rockstar', 'ninja']
 const PRESENT_VERBS = new Set('lead manage build develop drive own design create deliver launch run oversee maintain support implement coordinate write analyze analyse improve grow partner define ship scale mentor'.split(' '))
-const NUMBER = /(\d|%|\$|€|£|₹|\bx\d|\btwice\b|\bdoubled\b|\btripled\b|\bhalved\b)/i
+// A measurable result: digits, currency, or numbers and changes written in words
+// ("from one week to one day", "doubled sign-ups", "a third of the cost").
+const NUMBER = /(\d|%|\$|€|£|₹|\bx\d|\b(twice|doubled|tripled|quadrupled|halved|double|triple|tenfold|two-fold|threefold)\b|\b(by|to|in)\s+(half|a third|a quarter|two thirds|three quarters)\b|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|hundreds?|thousands?|millions?|billions?|dozens?)\b(?=\s+(\w+\s+)?(seconds?|minutes?|hours?|days?|weeks?|months?|quarters?|years?|times|x|percent|users?|customers?|clients?|teams?|engineers?|people|markets?|countries|cities|products?|releases?|accounts?|partners?|stores?)\b))|\bfrom\s+\w+(\s+\w+)?\s+to\s+\w+/i
 const ACTION_SECTIONS = new Set(['experience', 'projects', 'organisations'])
 const STANDARD_HEADING = {
   profile: /profile|summary|about|objective/i, experience: /experience|employment|work|career/i, education: /education|academic/i,

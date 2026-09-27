@@ -159,7 +159,13 @@ function QualityTab({ onShow }) {
     setRewrites(r => ({ ...r, ...Object.fromEntries(issues.map(i => [i.id, { status: 'loading' }])) }))
     try {
       const data = await post('/api/improve', { context: { title: resume.personal.jobTitle || '', targetRole: '' }, bullets })
-      setRewrites(r => ({ ...r, ...Object.fromEntries(data.rewrites.map(w => [w.ref, { status: 'ready', after: w.after, reason: w.reason, mock: data.mock }])) }))
+      const original = Object.fromEntries(issues.map(i => [i.id, i.text]))
+      const norm = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      setRewrites(r => ({ ...r, ...Object.fromEntries(data.rewrites.map(w => {
+        // The AI may judge that the rule was wrong; an unchanged "rewrite" means the same thing.
+        const fine = w.verdict === 'already_fine' || norm(w.after) === norm(original[w.ref])
+        return [w.ref, { status: fine ? 'fine' : 'ready', after: w.after, reason: w.reason, mock: data.mock }]
+      })) }))
     } catch (e) {
       setRewrites(r => ({ ...r, ...Object.fromEntries(issues.map(i => [i.id, { status: 'error', error: e.message }])) }))
       throw e
@@ -284,11 +290,21 @@ function IssueRow({ issue, resume, ignored, rewrite, serverDown, onFix, onRewrit
         </div>
       )}
       {rewrite?.status === 'accepted' && <p className="mt-2 text-[12px] font-medium text-emerald-700">✓ Rewrite applied</p>}
+      {rewrite?.status === 'fine' && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-emerald-50 p-3 text-[13px] text-emerald-900">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+          <div className="flex-1">
+            <p className="font-semibold">AI review: this bullet is already fine</p>
+            <p className="text-emerald-800">{rewrite.reason}</p>
+          </div>
+          {!ignored && <button onClick={onIgnore} className="shrink-0 rounded-md bg-white px-2.5 py-1 text-[12px] font-semibold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100">Ignore issue</button>}
+        </div>
+      )}
       {rewrite?.status === 'error' && <div className="mt-2"><ErrorNote error={rewrite.error} /></div>}
 
       <div className="mt-3 flex flex-wrap gap-2 pl-4">
         {issue.fix && !ignored && <Btn primary icon={Wand2} onClick={onFix}>Fix</Btn>}
-        {issue.ai && issue.target?.bullet >= 0 && !ignored && rewrite?.status !== 'ready' && rewrite?.status !== 'accepted' && (
+        {issue.ai && issue.target?.bullet >= 0 && !ignored && !['ready', 'accepted', 'fine'].includes(rewrite?.status) && (
           <Btn icon={rewrite?.status === 'loading' ? Loader2 : Sparkles} disabled={rewrite?.status === 'loading' || serverDown} onClick={onRewrite}>
             {rewrite?.status === 'loading' ? 'Rewriting…' : 'Suggest rewrite'}
           </Btn>
