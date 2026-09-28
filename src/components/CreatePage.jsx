@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   ArrowLeft, FilePlus2, Copy, Sparkles, Upload, FileText, Loader2, AlertCircle, CheckCircle2,
@@ -10,7 +10,11 @@ import { importResumeFile, importLinkedIn, ACCEPT, LINKEDIN_ACCEPT } from '../li
 import { useLabels, LabelChip } from './ResumeLabel'
 import { LinkedInIcon } from './BrandIcons'
 import { post, health } from '../lib/api'
-import { composePayload, buildFromVault } from '../lib/vault/compose'
+import { composePayload, planFromVault, tailorPayload, buildFromVault } from '../lib/vault/compose'
+import { jobScore } from '../lib/optimize/jobScore'
+import { TEMPLATES } from '../lib/templates'
+import { sampleResume } from '../lib/defaults'
+import { TemplateCard } from './TemplateGallery'
 import { resumeToPayload } from '../lib/optimize/serialize'
 
 // Page nav: two groups, each item a page of its own.
@@ -38,7 +42,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
   const [copyId, setCopyId] = useState(currentId ?? resumes[0]?.id ?? null)
   const [imp, setImp] = useState({ status: 'idle' }) // idle | reading | ready | error — per import tab
   const [keep, setKeep] = useState({ layout: true, design: true })
-  const [jd, setJd] = useState({ text: '', pages: 1, status: 'idle', steps: [] }) // job tab
+  const [jd, setJd] = useState(() => ({ text: '', pages: 1, status: 'idle', steps: [], templateId: resumes.find(r => r.id === currentId)?.settings?.templateId ?? TEMPLATES[0].id })) // job tab
 
   useEffect(() => { setTab(initialTab) }, [initialTab])
   // Switching between import pages starts over.
@@ -71,9 +75,9 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
     job: 'Job title – Company (from the job)',
   }[tab]
 
-  const canCreate = importing ? imp.status === 'ready' : tab === 'job' ? jd.text.trim().length >= 80 && !!copySource && jd.status !== 'running' : tab !== 'copy' || !!copySource
+  const canCreate = importing ? imp.status === 'ready' : tab === 'job' ? jd.text.trim().length >= 80 && jd.status !== 'running' : tab !== 'copy' || !!copySource
 
-  // Sync the vault → read the job → let AI pick vault content → build → check the match.
+  // Sync the vault → read the job → pick vault content → tailor it → build → score against the job.
   const buildFromJob = async () => {
     const steps = []
     const step = (id, label) => { steps.push({ id, label, status: 'running' }); setJd(j => ({ ...j, status: 'running', steps: [...steps], error: null })) }
@@ -91,18 +95,27 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
       const { analysis, mock } = await post('/api/jd/analyze', { jobDescription: jd.text })
       finish([analysis.title, analysis.company].filter(Boolean).join(' · '))
 
-      step('compose', 'Choosing your most relevant content')
+      step('compose', 'Choosing your most relevant experience')
       const { composition } = await post('/api/resume/compose', { analysis, targetBullets: jd.pages === 1 ? 16 : 30, headlines: payload.headlines, items: payload.items })
+      const plan = planFromVault({ vault, composition })
+      const companies = new Set(plan.entries.filter(e => e.type === 'experience').map(e => e.item.id)).size
+      finish(`${plan.entries.reduce((n, e) => n + e.bullets.length, 0)} bullets · all ${companies} compan${companies === 1 ? 'y' : 'ies'}`)
+
+      step('tailor', 'Tailoring title, summary, bullets and skills')
+      const { tailored } = await post('/api/resume/tailor', { analysis, ...tailorPayload(plan, vault) })
       const company = analysis.company?.trim()
       const finalName = name.trim() || [analysis.title, company].filter(Boolean).join(' – ') || 'Tailored resume'
-      const { resume, stats } = buildFromVault({ vault, base: copySource, resumes: all, composition, name: finalName, label: label.trim() || (company ? company.toLowerCase() : copySource.label ?? '') })
-      finish(`${stats.bullets} bullets from ${stats.entries} entries${stats.backfilled ? ` (${stats.backfilled} role${stats.backfilled === 1 ? '' : 's'} added so no company is missing)` : ''}`)
+      const template = TEMPLATES.find(t => t.id === jd.templateId) ?? TEMPLATES[0]
+      const { resume, changes } = buildFromVault({ vault, resumes: all, plan, tailored, template, name: finalName, label: label.trim() || (company ? company.toLowerCase() : '') })
+      const reworded = changes.filter(c => c.kind === 'bullet').length
+      finish(`${reworded} bullet${reworded === 1 ? '' : 's'} lightly reworded${changes.some(c => c.kind === 'summary') ? ' · new summary' : ''}${changes.some(c => c.kind === 'title') ? ' · new title' : ''}`)
 
-      step('match', 'Checking the match')
+      step('match', 'Scoring against the job')
       const { match } = await post('/api/jd/match', { resume: resumeToPayload(resume), analysis })
-      finish(`${match.matchScore}/100`)
+      const score = jobScore(resume, analysis, match)
+      finish(`${score.overall}/100 match`)
 
-      resume.optimize = { job: { text: jd.text, analysis, match, mock, matchedAt: Date.now(), suggestions: null, decisions: {}, built: { gaps: composition.gaps, bullets: stats.bullets, at: Date.now() } } }
+      resume.optimize = { job: { text: jd.text, analysis, match, mock, matchedAt: Date.now(), suggestions: null, decisions: {}, built: { changes, gaps: composition.gaps, backfilled: plan.backfilled, at: Date.now() } } }
       const id = addResume(resume)
       useStore.getState().setOptimizeTab('job')
       onCreated?.(id, 'optimize')
@@ -206,7 +219,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
             </>
           )}
 
-          {tab === 'job' && <FromJob jd={jd} setJd={setJd} resumes={resumes} baseId={copyId} setBaseId={setCopyId} />}
+          {tab === 'job' && <FromJob jd={jd} setJd={setJd} />}
 
           {importing && imp.status === 'ready' && <ImportSummary imp={imp} keep={keep} setKeep={setKeep} />}
 
@@ -235,39 +248,44 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
   )
 }
 
-function FromJob({ jd, setJd, resumes, baseId, setBaseId }) {
+function FromJob({ jd, setJd }) {
   const vault = useStore(s => s.vault)
   const syncVault = useStore(s => s.syncVault)
   const [server, setServer] = useState(null)
+  const preview = useMemo(() => sampleResume(), [])
   useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const bullets = vault.items.reduce((n, i) => n + i.bullets.length, 0)
   const running = jd.status === 'running'
+  const p = vault.profile ?? {}
   return (
     <>
-      <Intro title="From a job description" text="Paste a job. Your vault is synced first, then AI picks your most relevant bullets, projects, skills and headline, word for word. Every company is included and nothing is invented. Contact details come from your vault profile. You land in Optimize with the match score." />
-      <div className="mt-4 flex items-center gap-2 rounded-lg bg-soft px-3 py-2 text-[13px] text-muted">
-        <Archive size={15} className="text-brand" /> Vault: {vault.items.length} entries · {bullets} bullets
+      <Intro title="From a job description" text="Paste a job. Your vault is synced, then AI builds a resume for this job from your own experience: every company, the most relevant bullets (lightly reworded in the job’s terms), a tailored title, summary and skills. Nothing is invented. You land on the match score." />
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-soft px-3 py-2 text-[13px] text-muted">
+        <span className="flex items-center gap-1.5"><Archive size={15} className="text-brand" /> Vault: {vault.items.length} entries · {bullets} bullets</span>
+        <span>Contact details: {p.fullName || p.email ? [p.fullName, p.email].filter(Boolean).join(' · ') : 'none in your vault profile yet'}</span>
         <span className="ml-auto">{server === false ? <span className="text-red-600">AI server offline</span> : server?.mock ? <span className="text-amber-700">Demo mode (no API key)</span> : server ? <span className="text-emerald-700">AI connected</span> : 'Checking AI server…'}</span>
       </div>
       <textarea className="field mt-4 min-h-[200px] text-[14px] leading-relaxed" disabled={running} placeholder="Paste the full job description: title, responsibilities and requirements."
         value={jd.text} onChange={e => setJd(j => ({ ...j, text: e.target.value }))} />
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="label">Design from</label>
-          <select className="field" value={baseId ?? ''} disabled={running} onChange={e => setBaseId(e.target.value)}>
-            {[...resumes].sort((a, b) => b.updatedAt - a.updatedAt).map(r => <option key={r.id} value={r.id}>{r.name}{r.label ? ` · ${r.label}` : ''}</option>)}
-          </select>
+      <div className="mt-4 flex items-center gap-3">
+        <label className="label mb-0">Length</label>
+        <div className="flex gap-1 rounded-lg bg-field p-1">
+          {[1, 2].map(n => (
+            <button key={n} type="button" disabled={running} onClick={() => setJd(j => ({ ...j, pages: n }))}
+              className={clsx('rounded-md px-4 py-1.5 text-[14px] font-medium', jd.pages === n ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink')}>
+              {n} page{n > 1 ? 's' : ''}
+            </button>
+          ))}
         </div>
-        <div>
-          <label className="label">Length</label>
-          <div className="flex gap-1 rounded-lg bg-field p-1">
-            {[1, 2].map(n => (
-              <button key={n} type="button" disabled={running} onClick={() => setJd(j => ({ ...j, pages: n }))}
-                className={clsx('flex-1 rounded-md py-1.5 text-[14px] font-medium', jd.pages === n ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink')}>
-                {n} page{n > 1 ? 's' : ''}
-              </button>
-            ))}
-          </div>
+      </div>
+      <div className="mt-5">
+        <p className="label">Template</p>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
+          {TEMPLATES.map(t => (
+            <div key={t.id} className={running ? 'pointer-events-none opacity-60' : ''}>
+              <TemplateCard resume={preview} template={t} active={jd.templateId === t.id} onApply={tpl => setJd(j => ({ ...j, templateId: tpl.id }))} />
+            </div>
+          ))}
         </div>
       </div>
       {jd.steps.length > 0 && (
@@ -276,7 +294,7 @@ function FromJob({ jd, setJd, resumes, baseId, setBaseId }) {
             <li key={s.id} className="flex items-center gap-2">
               {s.status === 'running' ? <Loader2 size={16} className="animate-spin text-brand" /> : s.status === 'done' ? <CheckCircle2 size={16} className="text-emerald-600" /> : s.status === 'error' ? <AlertCircle size={16} className="text-red-600" /> : <Circle size={16} className="text-muted" />}
               <span className="text-ink">{s.label}</span>
-              {s.detail && <span className="ml-auto text-[13px] text-muted">{s.detail}</span>}
+              {s.detail && <span className="ml-auto text-right text-[13px] text-muted">{s.detail}</span>}
             </li>
           ))}
         </ol>

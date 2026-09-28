@@ -26,7 +26,7 @@ function syncProfile(profile, resumes) {
   for (const r of [...resumes].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))) {
     const me = r.personal ?? {}
     for (const f of PROFILE_FIELDS) if (!p[f] && me[f]?.trim?.()) p[f] = me[f].trim()
-    const headline = me.jobTitle?.trim()
+    const headline = r.vaultSkip?.includes('headline') ? '' : me.jobTitle?.trim()
     if (headline && !p.headlines.some(h => norm(h) === norm(headline)) && !(p.dismissedHeadlines ?? []).includes(norm(headline))) p.headlines.push(headline)
     for (const l of me.links ?? []) {
       const value = l.value?.trim()
@@ -131,7 +131,10 @@ export function syncVault(vault, resumes) {
   const now = Date.now()
 
   for (const r of resumes) {
+    const skip = new Set(r.vaultSkip ?? [])
     for (const section of r.sections) {
+      // Resumes built from the vault: generated summary/skills aren't new vault content.
+      if ((skip.has('summaries') && section.type === 'profile') || (skip.has('skills') && section.type === 'skills')) continue
       for (const entry of section.entries) {
         const ent = entityOf(section, entry)
         if (!ent || !ent.title.trim()) continue
@@ -149,6 +152,13 @@ export function syncVault(vault, resumes) {
         for (const b of ent.bullets) {
           const fp = fingerprint(b.text)
           if (!fp || dismissed.has(`b:${key}:${fp}`)) continue
+          // Tailored wording on a built resume belongs to the vault bullet it came from.
+          const linkedId = r.vaultLinks?.[fp]
+          const linked = linkedId && v.items.flatMap(i => i.bullets).find(x => x.id === linkedId)
+          if (linked) {
+            if (!linked.sources.some(s => s.resumeId === r.id && s.entryId === entry.id)) linked.sources.push(source)
+            continue
+          }
           let existing = item.bullets.find(x => x.origins.includes(fp)) || item.bullets.find(x => similar(x.text, b.text))
           if (existing) {
             if (!existing.origins.includes(fp)) existing.origins.push(fp)

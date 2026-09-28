@@ -9,6 +9,7 @@ import { analyzeQuality, GROUPS } from '../lib/optimize/rules'
 import { resumeToPayload, refKey } from '../lib/optimize/serialize'
 import { post, health } from '../lib/api'
 import VaultSuggestions from './VaultSuggestions'
+import { jobScore, JOB_WEIGHTS } from '../lib/optimize/jobScore'
 
 const SEVERITY = {
   high: { label: 'High', dot: 'bg-red-500', order: 0 },
@@ -328,6 +329,88 @@ const STATUS = {
 }
 const KIND_LABEL = { rewrite_bullet: 'Rewrite bullet', rewrite_summary: 'Rewrite summary', add_skill: 'Add skill', move_bullet_up: 'Move bullet up' }
 
+function Bar({ label, value, weight, detail }) {
+  return (
+    <div>
+      <div className="mb-1 flex justify-between gap-2 text-[13px]">
+        <span className="font-semibold text-ink">{label} <span className="font-normal text-muted">· {Math.round(weight * 100)}%</span></span>
+        <span className="tabular-nums text-muted">{value}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-field">
+        <div className="h-full rounded-full transition-all" style={{ width: `${value}%`, background: value >= 80 ? '#16a34a' : value >= 60 ? '#d97706' : '#dc2626' }} />
+      </div>
+      {detail && <p className="mt-1 text-[12px] text-muted">{detail}</p>}
+    </div>
+  )
+}
+
+// How the match score is made up. Keywords and title update live as the resume is edited.
+function MatchBreakdown({ score }) {
+  const { requirements: r, keywords: k, title: t } = score
+  const reqDetail = [
+    r.must.total && `Must-haves: ${r.must.covered}/${r.must.total} covered${r.must.partial ? `, ${r.must.partial} partly` : ''}`,
+    r.nice.total && `nice-to-haves: ${r.nice.covered}/${r.nice.total}${r.nice.partial ? `, ${r.nice.partial} partly` : ''}`,
+  ].filter(Boolean).join(' · ')
+  return (
+    <div className="mt-5 space-y-3">
+      <Bar label="Requirements" value={r.score} weight={JOB_WEIGHTS.requirements} detail={reqDetail} />
+      <Bar label="Keywords" value={k.score} weight={JOB_WEIGHTS.keywords} detail={`${k.found.length} of ${k.found.length + k.partial.length + k.missing.length} job keywords appear in the resume${k.partial.length ? `, ${k.partial.length} partly` : ''}`} />
+      <Bar label="Title" value={t.score} weight={JOB_WEIGHTS.title} detail={t.resume ? `“${t.resume}” for “${t.job}”` : `No title on the resume for “${t.job}”`} />
+      {(k.found.length + k.partial.length + k.missing.length > 0) && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {k.missing.map(x => <span key={x.term} className="rounded-full bg-red-50 px-2 py-0.5 text-[12px] text-red-700 ring-1 ring-red-200" title={x.importance === 'must' ? 'Must-have keyword, not in the resume' : 'Keyword not in the resume'}>{x.importance === 'must' && '★ '}{x.term}</span>)}
+          {k.partial.map(x => <span key={x.term} className="rounded-full bg-amber-50 px-2 py-0.5 text-[12px] text-amber-800 ring-1 ring-amber-200" title="Some of these words appear in the resume">~ {x.term}</span>)}
+          {k.found.map(x => <span key={x.term} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] text-emerald-800 ring-1 ring-emerald-200">✓ {x.term}</span>)}
+        </div>
+      )}
+      <p className="flex items-start gap-1.5 text-[12px] text-muted">
+        <Info size={13} className="mt-0.5 shrink-0" /> AI checks each requirement against the resume; the score is computed from that plus exact keyword and title matches, so the same resume always gets the same score.
+      </p>
+    </div>
+  )
+}
+
+// What "Create from a job description" changed from the vault's wording.
+function BuiltNote({ built }) {
+  const [open, setOpen] = useState(false)
+  const changes = built.changes ?? []
+  const bullets = changes.filter(c => c.kind === 'bullet').length
+  const parts = [
+    changes.some(c => c.kind === 'title') && 'title',
+    changes.some(c => c.kind === 'summary') && 'summary',
+    changes.some(c => c.kind === 'skills') && 'skills',
+    bullets && `${bullets} bullet${bullets === 1 ? '' : 's'} (light rewording)`,
+  ].filter(Boolean)
+  const LABEL = { title: 'Title', summary: 'Summary', skills: 'Skills', bullet: 'Bullet' }
+  return (
+    <div className="card p-5 text-[14px]">
+      <div className="flex gap-3">
+        <Sparkles size={18} className="mt-0.5 shrink-0 text-brand" />
+        <div className="min-w-0 flex-1">
+          <p className="text-ink">Built from your vault for this job. {parts.length ? <>Tailored: {parts.join(', ')}.</> : 'Your wording was kept as is.'} Every fact comes from your vault.</p>
+          {built.gaps?.length > 0 && <p className="mt-1 text-muted">Nothing in your vault shows: {built.gaps.join('; ')}. Add it to the Vault if you have that experience.</p>}
+          {changes.length > 0 && (
+            <button onClick={() => setOpen(v => !v)} className="mt-2 flex items-center gap-1 text-[13px] font-semibold text-brand hover:underline">
+              {open ? 'Hide' : 'Show'} what was tailored <ChevronDown size={14} className={clsx('transition', open && 'rotate-180')} />
+            </button>
+          )}
+        </div>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2.5">
+          {changes.map((c, i) => (
+            <div key={i} className="rounded-lg bg-soft p-3 text-[13px]">
+              <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-muted">{LABEL[c.kind]}{c.where ? ` · ${c.where}` : ''}</p>
+              {c.before && <p className="whitespace-pre-line text-muted line-through decoration-slate-300">{c.before}</p>}
+              <p className="whitespace-pre-line text-ink">{c.after}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function JobTab({ onShow }) {
   const resume = useResume()
   const { setOptimize, applyEdit, createTailoredCopy } = useStore()
@@ -394,6 +477,7 @@ function JobTab({ onShow }) {
   }
 
   const reqById = Object.fromEntries((job.analysis?.requirements ?? []).map(r => [r.id, r]))
+  const score = useMemo(() => (job.analysis && job.match ? jobScore(resume, job.analysis, job.match) : null), [resume, job.analysis, job.match])
 
   return (
     <>
@@ -414,19 +498,11 @@ function JobTab({ onShow }) {
         <div className="mt-3"><ErrorNote error={error} /></div>
       </div>
 
-      {job.built && (
-        <div className="card flex gap-3 p-5 text-[14px]">
-          <Sparkles size={18} className="mt-0.5 shrink-0 text-brand" />
-          <div>
-            <p className="text-ink">Built from your vault for this job: {job.built.bullets} of your own bullets, word for word. Review it in Content, then use the suggestions below to fine-tune.</p>
-            {job.built.gaps?.length > 0 && <p className="mt-1 text-muted">Nothing in your vault shows: {job.built.gaps.join('; ')}. Add it to the Vault if you have that experience.</p>}
-          </div>
-        </div>
-      )}
+      {job.built && <BuiltNote built={job.built} />}
       {job.analysis && job.match && (
         <div className="card p-6">
           <div className="flex items-center gap-5">
-            <Ring value={job.match.matchScore} size={104} label="match" />
+            <Ring value={score.overall} size={104} label="match" />
             <div className="min-w-0">
               <p className="text-[18px] font-bold text-ink">{job.analysis.title}</p>
               <p className="text-[14px] text-muted">{[job.analysis.company, job.analysis.seniority !== 'unknown' && job.analysis.seniority].filter(Boolean).join(' · ')}</p>
@@ -434,6 +510,7 @@ function JobTab({ onShow }) {
               {job.mock && <p className="mt-1 text-[12px] font-medium text-amber-700">Demo mode: keyword matching only. Add an API key on the server for real analysis.</p>}
             </div>
           </div>
+          <MatchBreakdown score={score} />
           {stale && (
             <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-[13px] text-amber-800">
               Your resume changed since this check.

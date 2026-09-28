@@ -1,6 +1,6 @@
-import { uid, blankEntry } from '../defaults'
+import { uid, blankEntry, DEFAULT_SETTINGS } from '../defaults'
 import { SECTION_TYPES } from '../sections'
-import { entityOf, itemKey, norm, SPOKEN_LANGUAGES } from './sync'
+import { entityOf, itemKey, norm, fingerprint, SPOKEN_LANGUAGES } from './sync'
 import { scoreVault } from './score'
 
 // "New resume from a job description": the AI picks vault content by ref (see /api/resume/compose);
@@ -12,7 +12,6 @@ const esc = t => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&g
 
 // Vault kind → resume section type. 'other' (custom sections) is left out: their headings vary too much to rebuild.
 const SECTION_OF = { experience: 'experience', education: 'education', projects: 'projects', certificates: 'certificates', awards: 'awards', organisations: 'organisations', publications: 'publications', courses: 'courses' }
-const MAIN_COLUMN = new Set(['experience', 'projects', 'organisations', 'publications', 'custom', 'references'])
 const DATED = new Set(['experience', 'education', 'organisations'])
 
 const isSpoken = item => item.kind === 'skills' && item.title === SPOKEN_LANGUAGES
@@ -68,20 +67,12 @@ const listHtml = bullets => (bullets.length ? `<ul>${bullets.map(b => `<li>${b.h
 // Newest first; no end date means current.
 const byRecency = (a, b) => (b.endDate || '9999').localeCompare(a.endDate || '9999') || (b.startDate || '').localeCompare(a.startDate || '')
 
-/**
- * Build a resume from a composition. `base` supplies contact details, design and non-vault sections
- * (languages, interests, references…). Returns { resume, stats }.
- */
-export function buildFromVault({ vault, base, resumes, composition, name, label }) {
+// Which vault content goes in: the AI's picks plus every company/role it left out (strongest bullets).
+export function planFromVault({ vault, composition }) {
   const items = new Map(vault.items.map(i => [i.id, i]))
   const bullets = new Map(vault.items.flatMap(i => i.bullets.map(b => [b.id, b])))
-  const sources = [base, ...resumes.filter(r => r.id !== base.id).sort((a, b) => b.updatedAt - a.updatedAt)]
-  const composed = {} // section type → entries
-  const push = (type, e) => (composed[type] ??= []).push(e)
-  let bulletCount = 0
   const { byBullet } = scoreVault(vault)
 
-  // Every company and role is included, even if the AI left one out: its strongest bullets fill in.
   const picks = [...composition.entries]
   let backfilled = 0
   for (const item of vault.items.filter(i => i.kind === 'experience')) {
@@ -98,83 +89,125 @@ export function buildFromVault({ vault, base, resumes, composition, name, label 
     }
   }
 
+  const entries = []
   for (const pick of picks) {
     const item = items.get(pick.itemRef)
     const type = item && SECTION_OF[item.kind]
     if (!type || type === 'education') continue
-    const role = item.roles.find(r => r.title === pick.roleTitle)
-    const entry = findSourceEntry(item, role?.title, sources) ?? entryFromFields(type, item, role)
-    const chosen = pick.bulletRefs.map(ref => bullets.get(ref)).filter(Boolean)
-    const key = richKey(type)
-    if (key) entry[key] = listHtml(chosen)
-    bulletCount += chosen.length
-    push(type, { ...entry, id: uid(), hidden: false })
+    entries.push({ type, item, role: item.roles.find(r => r.title === pick.roleTitle) ?? null, bullets: pick.bulletRefs.map(ref => bullets.get(ref)).filter(Boolean) })
   }
-
-  // Education is always included, with its original details.
-  for (const item of vault.items.filter(i => i.kind === 'education')) {
-    const roles = item.roles.length ? item.roles : [null]
-    for (const role of roles) push('education', { ...(findSourceEntry(item, role?.title, sources) ?? entryFromFields('education', item, role)), id: uid(), hidden: false })
-  }
-  for (const type of DATED) composed[type]?.sort(byRecency)
 
   // Skills: grouped as in the vault, in the order the AI ranked them.
   const groups = new Map()
   for (const ref of composition.skillRefs) {
     const item = vault.items.find(i => i.kind === 'skills' && i.bullets.some(b => b.id === ref))
     if (!item || isSpoken(item)) continue
-    if (!groups.has(item.id)) groups.set(item.id, { item, list: [] })
-    groups.get(item.id).list.push(bullets.get(ref).text)
-  }
-  const baseSkills = base.sections.find(s => s.type === 'skills')?.entries ?? []
-  if (groups.size) {
-    composed.skills = [...groups.values()].map(({ item, list }) => ({
-      ...blankEntry('skills'), id: uid(), skill: item.title === 'Skills' && groups.size === 1 ? '' : item.title, info: list.join(', '),
-      level: baseSkills.find(e => norm(e.skill) === norm(item.title))?.level ?? -1,
-    }))
+    if (!groups.has(item.id)) groups.set(item.id, { group: item.title, items: [] })
+    groups.get(item.id).items.push(bullets.get(ref).text)
   }
 
-  const summary = bullets.get(composition.summaryRef)
-  if (summary) composed.profile = [{ ...blankEntry('profile'), id: uid(), text: `<p>${esc(summary.text)}</p>` }]
-
-  // Keep the base resume's section order, headings and columns; replace what the vault now supplies.
-  const done = new Set()
-  const sections = []
-  for (const s of base.sections) {
-    if (composed[s.type]) {
-      if (done.has(s.type)) continue
-      done.add(s.type)
-      if (composed[s.type].length) sections.push({ ...s, id: uid(), hidden: false, entries: composed[s.type] })
-    } else if (!SECTION_OF[s.type] || s.type === 'custom') {
-      sections.push({ ...structuredClone(s), id: uid(), entries: s.entries.map(e => ({ ...structuredClone(e), id: uid() })) })
-    }
-    // A base section of a vault kind that the AI left out (e.g. irrelevant awards) is dropped.
+  const summaries = vault.items.filter(i => i.kind === 'summaries').flatMap(i => i.bullets.map(b => b.text))
+  const chosenSummary = bullets.get(composition.summaryRef)?.text
+  return {
+    entries,
+    skills: [...groups.values()],
+    summaries: chosenSummary ? [chosenSummary, ...summaries.filter(t => t !== chosenSummary)] : summaries,
+    headline: composition.headline || vault.profile?.headlines?.[0] || '',
+    backfilled,
   }
-  for (const [type, entries] of Object.entries(composed)) {
-    if (done.has(type) || !entries.length) continue
-    sections.push({ id: uid(), type, hidden: false, heading: SECTION_TYPES[type].label, column: MAIN_COLUMN.has(type) ? 'right' : 'left', entries })
+}
+
+// What the tailoring step sees: the chosen content plus the candidate's own headlines and summaries.
+export function tailorPayload(plan, vault) {
+  const context = e => [e.role?.title, e.item.title].filter(Boolean).join(' · ').slice(0, 300)
+  return {
+    headlines: [plan.headline, ...(vault.profile?.headlines ?? []).filter(h => h !== plan.headline)].filter(Boolean).slice(0, 20),
+    summaries: plan.summaries.slice(0, 10).map(t => t.slice(0, 3000)),
+    roles: [...new Set(vault.items.filter(i => i.kind === 'experience').flatMap(i => i.roles.map(r => `${r.title}, ${i.title}`)))].slice(0, 40),
+    bullets: plan.entries.flatMap(e => e.bullets.map(b => ({ ref: b.id, text: b.text.slice(0, 3000), context: context(e) }))).slice(0, 80),
+    skills: plan.skills.slice(0, 20).map(g => ({ group: g.group.slice(0, 100), items: g.items.slice(0, 60).map(i => i.slice(0, 100)) })),
+  }
+}
+
+// Default order and placement for a resume built from the vault (the template decides columns or not).
+const ORDER = ['profile', 'experience', 'projects', 'education', 'skills', 'certificates', 'awards', 'publications', 'organisations', 'courses', 'languages']
+const HEADING = { profile: 'Profile Summary', experience: 'Professional Experience', certificates: 'Certifications', organisations: 'Volunteering' }
+const LEFT = new Set(['profile', 'education', 'skills', 'languages', 'awards', 'courses'])
+
+/**
+ * Build the resume: tailored text where the tailoring step changed it, vault text otherwise; contact
+ * details only from the vault profile; design from the chosen template. Returns { resume, changes }.
+ */
+export function buildFromVault({ vault, resumes, plan, tailored, template, name, label }) {
+  const sources = [...resumes].sort((a, b) => b.updatedAt - a.updatedAt)
+  const textOf = new Map((tailored?.bullets ?? []).map(b => [b.ref, b.text]))
+  const composed = {}
+  const push = (type, e) => (composed[type] ??= []).push(e)
+  const links = {} // fingerprint of each resume bullet → vault bullet it came from (null: don't add to the vault)
+  const changes = []
+
+  for (const { type, item, role, bullets } of plan.entries) {
+    const entry = findSourceEntry(item, role?.title, sources) ?? entryFromFields(type, item, role)
+    const list = bullets.map(b => {
+      const text = textOf.get(b.id) ?? b.text
+      if (text !== b.text) changes.push({ kind: 'bullet', where: [role?.title, item.title].filter(Boolean).join(', '), before: b.text, after: text })
+      links[fingerprint(text)] = b.id
+      return text === b.text ? b : { text, html: '' }
+    })
+    const key = richKey(type)
+    if (key) entry[key] = listHtml(list)
+    push(type, { ...entry, id: uid(), hidden: false })
   }
 
-  // Contact details from the vault profile (falling back to the base resume); the headline the AI chose.
+  for (const item of vault.items.filter(i => i.kind === 'education')) {
+    const roles = item.roles.length ? item.roles : [null]
+    for (const role of roles) push('education', { ...(findSourceEntry(item, role?.title, sources) ?? entryFromFields('education', item, role)), id: uid(), hidden: false })
+  }
+  for (const type of DATED) composed[type]?.sort(byRecency)
+
+  const skills = tailored?.skills?.length ? tailored.skills : plan.skills
+  if (skills.length) {
+    composed.skills = skills.map(g => ({ ...blankEntry('skills'), id: uid(), skill: g.group === 'Skills' && skills.length === 1 ? '' : g.group, info: g.items.join(', '), level: -1 }))
+    const before = plan.skills.map(g => `${g.group}: ${g.items.join(', ')}`).join('\n')
+    const after = skills.map(g => `${g.group}: ${g.items.join(', ')}`).join('\n')
+    if (before !== after) changes.push({ kind: 'skills', before, after })
+  }
+
+  const summary = tailored?.summary || plan.summaries[0] || ''
+  if (summary) {
+    composed.profile = [{ ...blankEntry('profile'), id: uid(), text: `<p>${esc(summary)}</p>` }]
+    if (summary !== plan.summaries[0]) changes.push({ kind: 'summary', before: plan.summaries[0] ?? '', after: summary })
+  }
+
+  const spoken = vault.items.find(isSpoken)
+  if (spoken?.bullets.length) {
+    composed.languages = spoken.bullets.map(b => {
+      const [language, info = ''] = b.text.split(/\s+[–—-]\s+/)
+      return { ...blankEntry('languages'), id: uid(), language, info }
+    })
+  }
+
+  const sections = ORDER.filter(t => composed[t]?.length).map(type => ({
+    id: uid(), type, hidden: false, heading: HEADING[type] ?? SECTION_TYPES[type].label, column: LEFT.has(type) ? 'left' : 'right', entries: composed[type],
+  }))
+
+  // Contact details: the vault profile only; anything it doesn't have stays empty.
   const profile = vault.profile ?? {}
-  const field = (f, fallback) => profile[f]?.trim() || fallback || ''
-  const links = profile.links?.length ? profile.links : base.personal.links ?? []
+  const headline = tailored?.headline || plan.headline
+  if (headline && headline !== plan.headline) changes.unshift({ kind: 'title', before: plan.headline, after: headline })
   const personal = {
-    ...structuredClone(base.personal),
-    fullName: field('fullName', base.personal.fullName),
-    email: field('email', base.personal.email),
-    phone: field('phone', base.personal.phone),
-    location: field('location', base.personal.location),
-    photo: field('photo', base.personal.photo),
-    jobTitle: composition.headline || profile.headlines?.[0] || base.personal.jobTitle || '',
-    links: links.map(l => ({ id: uid(), type: l.type, value: l.value })),
+    fullName: profile.fullName ?? '', jobTitle: headline ?? '', email: profile.email ?? '', phone: profile.phone ?? '',
+    location: profile.location ?? '', photo: profile.photo ?? '',
+    links: (profile.links ?? []).map(l => ({ id: uid(), type: l.type, value: l.value })),
   }
+
   const resume = {
-    ...structuredClone(base),
-    id: uid(), name, label, updatedAt: Date.now(),
-    personal,
-    sections,
-    optimize: {},
+    id: uid(), name, label, updatedAt: Date.now(), personal, sections, optimize: {},
+    settings: { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(template.settings), templateId: template.id },
+    // Tailored wording stays on this resume: sync links it back to the vault bullet it came from instead
+    // of adding a near-duplicate, and skips the generated summary, headline and skills.
+    vaultLinks: links,
+    vaultSkip: ['summaries', 'skills', 'headline'],
   }
-  return { resume, stats: { bullets: bulletCount, entries: picks.length, backfilled } }
+  return { resume, changes }
 }

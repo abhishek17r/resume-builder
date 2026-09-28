@@ -30,7 +30,7 @@ function LazyThumb({ resume, template }) {
 
 export function TemplateCard({ resume, template, active, onApply }) {
   return (
-    <button onClick={() => onApply(template)} className="group text-left">
+    <button type="button" onClick={() => onApply(template)} className="group text-left">
       <div className={clsx('relative w-fit rounded-lg p-1 ring-2 transition', active ? 'ring-brand' : 'ring-transparent group-hover:ring-slate-300')}>
         <LazyThumb resume={resume} template={template} />
         {active && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-brand text-white shadow"><Check size={14} /></span>}
