@@ -19,6 +19,7 @@ const isSpoken = item => item.kind === 'skills' && item.title === SPOKEN_LANGUAG
 
 export function composePayload(vault) {
   const { byBullet } = scoreVault(vault)
+  const headlines = (vault.profile?.headlines ?? []).slice(0, 20).map(h => h.slice(0, 300))
   const items = vault.items
     .filter(i => (SECTION_OF[i.kind] || ['skills', 'summaries'].includes(i.kind)) && !isSpoken(i))
     .filter(i => i.bullets.length || SECTION_OF[i.kind])
@@ -29,7 +30,7 @@ export function composePayload(vault) {
       dates: range(i.start, i.end),
       bullets: i.bullets.slice(0, 200).map(b => ({ ref: b.id, text: b.text.slice(0, 3000), role: (b.role || '').slice(0, 300), ...(byBullet[b.id] ? { score: byBullet[b.id].score } : {}) })),
     }))
-  return { items }
+  return { items, headlines }
 }
 
 // The resume entry this vault item (and role) came from, so links, locations and other fields survive.
@@ -78,8 +79,26 @@ export function buildFromVault({ vault, base, resumes, composition, name, label 
   const composed = {} // section type → entries
   const push = (type, e) => (composed[type] ??= []).push(e)
   let bulletCount = 0
+  const { byBullet } = scoreVault(vault)
 
-  for (const pick of composition.entries) {
+  // Every company and role is included, even if the AI left one out: its strongest bullets fill in.
+  const picks = [...composition.entries]
+  let backfilled = 0
+  for (const item of vault.items.filter(i => i.kind === 'experience')) {
+    const roles = item.roles.length ? item.roles.map(r => r.title) : ['']
+    for (const role of roles) {
+      const covered = picks.some(p => p.itemRef === item.id && (norm(p.roleTitle) === norm(role) || (!p.roleTitle && roles.length === 1) || !role))
+      if (covered) continue
+      const best = item.bullets
+        .filter(b => !role || !b.role || norm(b.role) === norm(role))
+        .sort((a, b) => (byBullet[b.id]?.score ?? 0) - (byBullet[a.id]?.score ?? 0))
+        .slice(0, 2)
+      picks.push({ itemRef: item.id, roleTitle: role, bulletRefs: best.map(b => b.id) })
+      backfilled++
+    }
+  }
+
+  for (const pick of picks) {
     const item = items.get(pick.itemRef)
     const type = item && SECTION_OF[item.kind]
     if (!type || type === 'education') continue
@@ -136,12 +155,26 @@ export function buildFromVault({ vault, base, resumes, composition, name, label 
     sections.push({ id: uid(), type, hidden: false, heading: SECTION_TYPES[type].label, column: MAIN_COLUMN.has(type) ? 'right' : 'left', entries })
   }
 
+  // Contact details from the vault profile (falling back to the base resume); the headline the AI chose.
+  const profile = vault.profile ?? {}
+  const field = (f, fallback) => profile[f]?.trim() || fallback || ''
+  const links = profile.links?.length ? profile.links : base.personal.links ?? []
+  const personal = {
+    ...structuredClone(base.personal),
+    fullName: field('fullName', base.personal.fullName),
+    email: field('email', base.personal.email),
+    phone: field('phone', base.personal.phone),
+    location: field('location', base.personal.location),
+    photo: field('photo', base.personal.photo),
+    jobTitle: composition.headline || profile.headlines?.[0] || base.personal.jobTitle || '',
+    links: links.map(l => ({ id: uid(), type: l.type, value: l.value })),
+  }
   const resume = {
     ...structuredClone(base),
     id: uid(), name, label, updatedAt: Date.now(),
-    personal: { ...structuredClone(base.personal), links: (base.personal.links ?? []).map(l => ({ ...l, id: uid() })) },
+    personal,
     sections,
     optimize: {},
   }
-  return { resume, stats: { bullets: bulletCount, entries: composition.entries.length } }
+  return { resume, stats: { bullets: bulletCount, entries: picks.length, backfilled } }
 }

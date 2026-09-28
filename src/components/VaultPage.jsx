@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { Search, RefreshCw, Sparkles, Plus, Trash2, Loader2, Tag, X, LayoutList, Grid3x3, AlertCircle, Pencil, Check, Wand2, EyeOff, RotateCcw, ChevronDown } from 'lucide-react'
+import { Search, RefreshCw, Sparkles, Plus, Trash2, Loader2, Tag, X, LayoutList, Grid3x3, AlertCircle, Pencil, Check, Wand2, EyeOff, RotateCcw, ChevronDown, User, Mail, Phone, MapPin, Link2 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { TAGS, TAG_BY_ID, VAULT_KINDS } from '../config/taxonomy'
 import { post, health } from '../lib/api'
@@ -115,6 +115,7 @@ export default function VaultPage() {
         {/* vertical dimension */}
         <aside className="md:sticky md:top-24 md:h-fit md:w-64 md:shrink-0">
           <div className="card max-h-[75vh] overflow-auto p-2">
+            <NavRow active={selected === 'profile'} onClick={() => setSelected('profile')} label="Profile" bold />
             <NavRow active={selected === 'all'} onClick={() => setSelected('all')} label="Everything" count={allBullets.length} bold />
             {kindsPresent.map(k => (
               <div key={k.id} className="mt-2">
@@ -131,8 +132,10 @@ export default function VaultPage() {
         </aside>
 
         <div className="min-w-0 flex-1 space-y-4">
-          {scores.count > 0 && <ScoreCard scores={scores} active={needsWorkOnly} onNeedsWork={() => setNeedsWorkOnly(v => !v)} />}
+          {(selected === 'profile' || selected === 'all') && <ProfileCard />}
+          {selected !== 'profile' && scores.count > 0 && <ScoreCard scores={scores} active={needsWorkOnly} onNeedsWork={() => setNeedsWorkOnly(v => !v)} />}
           {/* horizontal dimension */}
+          {selected !== 'profile' && <>
           <div className="card space-y-3 p-4">
             <div className="flex flex-wrap gap-1.5">
               {TAGS.map(t => (
@@ -163,6 +166,94 @@ export default function VaultPage() {
             : visible.length === 0
               ? <div className="card p-8 text-center text-muted">{items.length ? 'Nothing matches these filters.' : 'Your vault fills up automatically as you add content to resumes.'}</div>
               : visible.map(({ item, bullets }) => <ItemCard key={item.id} item={item} bullets={bullets} scores={scores} server={server} />)}
+          </>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Profile details: filled from your resumes (newest first), editable here; sync never overwrites edits.
+function ProfileCard() {
+  const profile = useStore(s => s.vault.profile) ?? {}
+  const { updateVaultProfile, removeVaultHeadline } = useStore()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(profile)
+  const [newHeadline, setNewHeadline] = useState('')
+  const headlines = profile.headlines ?? []
+  const links = profile.links ?? []
+  const start = () => { setDraft({ ...profile, links: links.map(l => ({ ...l })) }); setEditing(true) }
+  const save = () => {
+    updateVaultProfile({ fullName: draft.fullName?.trim() ?? '', email: draft.email?.trim() ?? '', phone: draft.phone?.trim() ?? '', location: draft.location?.trim() ?? '', links: (draft.links ?? []).filter(l => l.value.trim()) })
+    setEditing(false)
+  }
+  const addHeadline = () => { const h = newHeadline.trim(); if (h && !headlines.includes(h)) updateVaultProfile({ headlines: [...headlines, h] }); setNewHeadline('') }
+  const field = (key, label, Icon) => (
+    <label className="block">
+      <span className="label flex items-center gap-1.5"><Icon size={13} /> {label}</span>
+      <input className="field py-2 text-[14px]" value={draft[key] ?? ''} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} />
+    </label>
+  )
+  const empty = !profile.fullName && !profile.email && !headlines.length
+
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-start gap-3">
+        {profile.photo ? <img src={profile.photo} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-full bg-brand-soft text-brand"><User size={22} /></span>}
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">Profile</p>
+          <h3 className="text-[18px] font-bold text-ink">{profile.fullName || <span className="text-muted">No name yet</span>}</h3>
+          {!editing && (
+            <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-muted">
+              {profile.email && <span className="flex items-center gap-1"><Mail size={12} /> {profile.email}</span>}
+              {profile.phone && <span className="flex items-center gap-1"><Phone size={12} /> {profile.phone}</span>}
+              {profile.location && <span className="flex items-center gap-1"><MapPin size={12} /> {profile.location}</span>}
+              {links.map(l => <span key={l.value} className="flex items-center gap-1"><Link2 size={12} /> {l.value}</span>)}
+            </p>
+          )}
+        </div>
+        {!editing && <button onClick={start} className="flex items-center gap-1.5 rounded-lg bg-field px-3 py-1.5 text-[13px] font-semibold text-ink hover:bg-slate-200"><Pencil size={13} /> Edit</button>}
+      </div>
+
+      {empty && !editing && <p className="text-[13px] text-muted">Fills in from your resumes when the vault syncs.</p>}
+
+      {editing && (
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {field('fullName', 'Full name', User)}
+            {field('email', 'Email', Mail)}
+            {field('phone', 'Phone', Phone)}
+            {field('location', 'Location', MapPin)}
+          </div>
+          <div>
+            <span className="label flex items-center gap-1.5"><Link2 size={13} /> Links</span>
+            <div className="space-y-1.5">
+              {(draft.links ?? []).map((l, i) => (
+                <div key={i} className="flex gap-2">
+                  <input className="field py-2 text-[14px]" value={l.value} onChange={e => setDraft(d => ({ ...d, links: d.links.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) }))} />
+                  <button onClick={() => setDraft(d => ({ ...d, links: d.links.filter((_, j) => j !== i) }))} className="grid w-9 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600" title="Remove"><X size={15} /></button>
+                </div>
+              ))}
+              <button onClick={() => setDraft(d => ({ ...d, links: [...(d.links ?? []), { type: 'website', value: '' }] }))} className="flex items-center gap-1 text-[13px] font-medium text-muted hover:text-ink"><Plus size={13} /> Add link</button>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setEditing(false)} className="rounded-lg px-4 py-2 text-[14px] font-semibold text-muted hover:bg-field">Cancel</button>
+            <button onClick={save} className="rounded-lg bg-brand px-4 py-2 text-[14px] font-semibold text-white hover:brightness-110">Save</button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <p className="mb-1.5 text-[13px] font-semibold text-ink">Headlines <span className="font-normal text-muted">· the title line under your name; a resume built from a job uses the best fit</span></p>
+        <div className="flex flex-wrap gap-1.5">
+          {headlines.map(h => (
+            <span key={h} className="flex items-center gap-1 rounded-full bg-field py-1 pl-3 pr-1.5 text-[13px] text-ink">
+              {h}
+              <button onClick={() => removeVaultHeadline(h)} className="grid h-5 w-5 place-items-center rounded-full text-slate-400 hover:bg-white hover:text-red-600" title="Remove (won’t be re-added)"><X size={12} /></button>
+            </span>
+          ))}
+          <input value={newHeadline} onChange={e => setNewHeadline(e.target.value)} onKeyDown={e => e.key === 'Enter' && addHeadline()} placeholder="Add a headline…" className="min-w-[180px] flex-1 rounded-full bg-white px-3 py-1 text-[13px] outline-none ring-1 ring-slate-200 focus:ring-brand" />
         </div>
       </div>
     </div>
@@ -218,7 +309,7 @@ function NavRow({ active, onClick, label, count, score, bold, indent }) {
     <button onClick={onClick} className={clsx('flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-[14px] transition', indent ? 'pl-6' : 'pl-3', active ? 'bg-brand-soft text-brand' : 'text-ink hover:bg-soft', bold && 'font-semibold')}>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <ScorePill score={score} title="Average bullet score" />
-      <span className="shrink-0 text-[12px] font-normal text-muted">{count}</span>
+      {count != null && <span className="shrink-0 text-[12px] font-normal text-muted">{count}</span>}
     </button>
   )
 }

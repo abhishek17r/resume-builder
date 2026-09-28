@@ -92,11 +92,11 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
       finish([analysis.title, analysis.company].filter(Boolean).join(' · '))
 
       step('compose', 'Choosing your most relevant content')
-      const { composition } = await post('/api/resume/compose', { analysis, targetBullets: jd.pages === 1 ? 16 : 30, items: payload.items })
+      const { composition } = await post('/api/resume/compose', { analysis, targetBullets: jd.pages === 1 ? 16 : 30, headlines: payload.headlines, items: payload.items })
       const company = analysis.company?.trim()
       const finalName = name.trim() || [analysis.title, company].filter(Boolean).join(' – ') || 'Tailored resume'
       const { resume, stats } = buildFromVault({ vault, base: copySource, resumes: all, composition, name: finalName, label: label.trim() || (company ? company.toLowerCase() : copySource.label ?? '') })
-      finish(`${stats.bullets} bullets from ${stats.entries} entries`)
+      finish(`${stats.bullets} bullets from ${stats.entries} entries${stats.backfilled ? ` (${stats.backfilled} role${stats.backfilled === 1 ? '' : 's'} added so no company is missing)` : ''}`)
 
       step('match', 'Checking the match')
       const { match } = await post('/api/jd/match', { resume: resumeToPayload(resume), analysis })
@@ -244,7 +244,7 @@ function FromJob({ jd, setJd, resumes, baseId, setBaseId }) {
   const running = jd.status === 'running'
   return (
     <>
-      <Intro title="From a job description" text="Paste a job. Your vault is synced first, then AI picks your most relevant roles, bullets, projects and skills, word for word. Nothing is invented. You land in Optimize with the match score." />
+      <Intro title="From a job description" text="Paste a job. Your vault is synced first, then AI picks your most relevant bullets, projects, skills and headline, word for word. Every company is included and nothing is invented. Contact details come from your vault profile. You land in Optimize with the match score." />
       <div className="mt-4 flex items-center gap-2 rounded-lg bg-soft px-3 py-2 text-[13px] text-muted">
         <Archive size={15} className="text-brand" /> Vault: {vault.items.length} entries · {bullets} bullets
         <span className="ml-auto">{server === false ? <span className="text-red-600">AI server offline</span> : server?.mock ? <span className="text-amber-700">Demo mode (no API key)</span> : server ? <span className="text-emerald-700">AI connected</span> : 'Checking AI server…'}</span>
@@ -253,7 +253,7 @@ function FromJob({ jd, setJd, resumes, baseId, setBaseId }) {
         value={jd.text} onChange={e => setJd(j => ({ ...j, text: e.target.value }))} />
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="label">Contact details & design from</label>
+          <label className="label">Design from</label>
           <select className="field" value={baseId ?? ''} disabled={running} onChange={e => setBaseId(e.target.value)}>
             {[...resumes].sort((a, b) => b.updatedAt - a.updatedAt).map(r => <option key={r.id} value={r.id}>{r.name}{r.label ? ` · ${r.label}` : ''}</option>)}
           </select>

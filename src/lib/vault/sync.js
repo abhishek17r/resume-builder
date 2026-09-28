@@ -5,7 +5,8 @@ import { TAGS, KIND_OF_SECTION } from '../../config/taxonomy'
 
 // The Vault: every piece of CV content across all resumes, deduplicated and tagged.
 //
-// vault = { items: Item[], dismissed: string[], syncedAt }
+// vault = { profile: Profile, items: Item[], dismissed: string[], syncedAt }
+// Profile = { fullName, email, phone, location, photo, links: {type,value}[], headlines: string[] }
 // Item   = { id, key, kind, title, subtitle, roles: Role[], start, end, location, bullets: Bullet[], manual?, createdAt }
 // Bullet = { id, text, html, role, tags: string[], tagSource: 'rules'|'ai'|'user', origins: string[], sources: Source[], manual?, createdAt, updatedAt }
 //
@@ -13,7 +14,27 @@ import { TAGS, KIND_OF_SECTION } from '../../config/taxonomy'
 // User edits are never overwritten; a bullet remembers every fingerprint it has had (`origins`) so an
 // edited bullet isn't re-added from the resume it came from, and `dismissed` stops deleted ones returning.
 
-export const emptyVault = () => ({ items: [], dismissed: [], syncedAt: 0 })
+export const emptyProfile = () => ({ fullName: '', email: '', phone: '', location: '', photo: '', links: [], headlines: [] })
+export const emptyVault = () => ({ profile: emptyProfile(), items: [], dismissed: [], syncedAt: 0 })
+
+const PROFILE_FIELDS = ['fullName', 'email', 'phone', 'location', 'photo']
+
+// Profile details from resumes, newest first. Only fills what's empty, so edits made in the Vault stay;
+// every headline (job title line) and link seen is kept, since resumes are often tailored.
+function syncProfile(profile, resumes) {
+  const p = { ...emptyProfile(), ...structuredClone(profile ?? {}) }
+  for (const r of [...resumes].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))) {
+    const me = r.personal ?? {}
+    for (const f of PROFILE_FIELDS) if (!p[f] && me[f]?.trim?.()) p[f] = me[f].trim()
+    const headline = me.jobTitle?.trim()
+    if (headline && !p.headlines.some(h => norm(h) === norm(headline)) && !(p.dismissedHeadlines ?? []).includes(norm(headline))) p.headlines.push(headline)
+    for (const l of me.links ?? []) {
+      const value = l.value?.trim()
+      if (value && !p.links.some(x => norm(x.value) === norm(value))) p.links.push({ type: l.type, value })
+    }
+  }
+  return p
+}
 
 export const norm = t => (t || '').toLowerCase().replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/[^a-z0-9%$€£₹+#.]+/g, ' ').replace(/\s+/g, ' ').trim()
 export const fingerprint = text => norm(text).replace(/[.\s]+$/, '')
@@ -103,6 +124,7 @@ export const itemKey = (kind, title, subtitle) => `${kind}:${norm(title)}${kind 
 /** Merge every resume's content into the vault. Pure: returns a new vault. */
 export function syncVault(vault, resumes) {
   const v = structuredClone(vault ?? emptyVault())
+  v.profile = syncProfile(v.profile, resumes)
   const dismissed = new Set(v.dismissed)
   const byKey = new Map(v.items.map(it => [it.key, it]))
   for (const it of v.items) for (const b of it.bullets) b.sources = []

@@ -5,7 +5,7 @@ import { sampleResume, blankResume, uid, blankEntry, DEFAULT_SETTINGS } from './
 import { idbStorage } from './storage'
 import { SECTION_TYPES } from './sections'
 import { applyEditTo } from './optimize/apply'
-import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint } from './vault/sync'
+import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint, norm } from './vault/sync'
 
 const HISTORY_LIMIT = 100
 const COALESCE_MS = 600
@@ -246,6 +246,13 @@ export const useStore = create(
           set(state => ({ vault: { ...state.vault, items: [...state.vault.items, { id, key: `${kind}:manual:${id}`, kind, title, subtitle, roles: [], start: '', end: '', location: '', bullets: [], manual: true, createdAt: Date.now() }] } }))
           return id
         },
+        // Vault profile edits. Removing a headline remembers it so sync doesn't add it back.
+        updateVaultProfile: patch => set(state => ({ vault: { ...state.vault, profile: { ...state.vault.profile, ...patch } } })),
+        removeVaultHeadline: headline => set(state => {
+          const p = state.vault.profile
+          const key = norm(headline)
+          return { vault: { ...state.vault, profile: { ...p, headlines: p.headlines.filter(h => h !== headline), dismissedHeadlines: [...new Set([...(p.dismissedHeadlines ?? []), key])] } } }
+        }),
         // Per-bullet ignored checks (same idea as Optimize's "Ignore issue"), stored on the vault bullet.
         ignoreVaultIssue: (itemId, bulletId, check, ignored = true) => set(state => ({ vault: mapBullet(state.vault, itemId, bulletId, b => {
           const list = new Set(b.ignored ?? [])
