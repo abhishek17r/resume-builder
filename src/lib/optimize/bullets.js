@@ -51,3 +51,19 @@ export function mapItems(html, fn) {
   }
   return root.innerHTML
 }
+
+// Append a bullet (HTML or text) to the end of a description's last list, or start a list.
+export function appendBullet(html, bulletHtml) {
+  const { root } = parse(html)
+  const doc = root.ownerDocument
+  const li = doc.createElement('li')
+  li.innerHTML = bulletHtml
+  const last = [...root.children].at(-1)
+  if (last && (last.tagName === 'UL' || last.tagName === 'OL')) last.appendChild(li)
+  else {
+    const ul = doc.createElement('ul')
+    ul.appendChild(li)
+    root.appendChild(ul)
+  }
+  return root.innerHTML
+}

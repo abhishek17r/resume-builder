@@ -7,6 +7,7 @@ import Preview from './components/Preview'
 import Overview from './components/Overview'
 import CreatePage from './components/CreatePage'
 import OptimizePanel from './components/OptimizePanel'
+import VaultPage from './components/VaultPage'
 import { useStore, useResume, useHydrated } from './lib/store'
 import { onSaveResult } from './lib/storage'
 import { PAGE_SIZES } from './components/ResumeDocument'
@@ -29,6 +30,14 @@ export default function App() {
 
   useEffect(() => onSaveResult(err => setSaveError(err ? err.message || String(err) : null)), [])
 
+  // Keep the vault in step with every resume (debounced while typing).
+  const resumes = useStore(s => s.resumes)
+  useEffect(() => {
+    if (!hydrated) return
+    const t = setTimeout(() => useStore.getState().syncVault(), 800)
+    return () => clearTimeout(t)
+  }, [resumes, hydrated])
+
   useEffect(() => {
     history.replaceState(null, '', view === 'new' ? `#new/${createTab}` : `#${view}`)
     window.scrollTo(0, 0)
@@ -40,7 +49,7 @@ export default function App() {
     const onHash = () => {
       const [next, tab] = location.hash.slice(1).split('/')
       if (next === 'new') setCreateTab(tab || 'blank')
-      if (['overview', 'content', 'customize', 'optimize', 'new'].includes(next)) setView(next)
+      if (['overview', 'content', 'customize', 'optimize', 'new', 'vault'].includes(next)) setView(next)
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
@@ -83,10 +92,10 @@ export default function App() {
   )
 
   // The create page and (with no resumes) the Overview are plain pages without the editor panes.
-  if (view === 'new' || (empty && view !== 'overview')) return (
+  if (view === 'new' || view === 'vault' || (empty && view !== 'overview')) return (
     <div className="min-h-screen px-0 sm:px-6">
-      <div className="sticky top-0 z-30 pt-0 sm:pt-4"><TopBar view={view === 'new' ? 'new' : 'overview'} setView={setView} onDownload={download} openCreate={openCreate} /></div>
-      {view === 'new' ? createPage : <Overview onOpen={() => setView('content')} onCreate={openCreate} />}
+      <div className="sticky top-0 z-30 pt-0 sm:pt-4"><TopBar view={view === 'new' || view === 'vault' ? view : 'overview'} setView={setView} onDownload={download} openCreate={openCreate} /></div>
+      {view === 'new' ? createPage : view === 'vault' ? <VaultPage /> : <Overview onOpen={() => setView('content')} onCreate={openCreate} />}
     </div>
   )
 

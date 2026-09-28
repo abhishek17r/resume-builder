@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { LayoutGrid, FileText, Paintbrush, Gauge, Download, EllipsisVertical, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson, GitBranch, Tag, ArrowLeft } from 'lucide-react'
+import { LayoutGrid, FileText, Paintbrush, Gauge, Archive, Download, EllipsisVertical, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson, GitBranch, Tag, ArrowLeft } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
 import { LinkedInIcon } from './BrandIcons'
 
@@ -32,11 +32,14 @@ export default function TopBar({ view, setView, onDownload, openCreate }) {
           <span className="cta grid h-8 w-8 place-items-center rounded-lg text-white"><FileText size={17} /></span>
           Resume Builder
         </button>
-        {view !== 'overview' && (
-          <button onClick={() => setView('overview')} className="ml-auto flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-medium text-muted hover:bg-soft hover:text-ink">
-            <LayoutGrid size={16} /> All resumes
-          </button>
-        )}
+        <nav className="ml-auto flex gap-1 rounded-xl bg-field p-1">
+          {[['overview', LayoutGrid, 'Resumes'], ['vault', Archive, 'Vault']].map(([id, Icon, label]) => (
+            <button key={id} onClick={() => setView(id)}
+              className={clsx('flex items-center gap-2 rounded-lg px-4 py-1.5 text-[14px] font-medium transition', view === id ? 'bg-white text-brand shadow-sm' : 'text-body hover:text-ink')}>
+              <Icon size={16} /> {label}
+            </button>
+          ))}
+        </nav>
       </header>
     )
   }

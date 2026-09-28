@@ -5,6 +5,7 @@ import { sampleResume, blankResume, uid, blankEntry, DEFAULT_SETTINGS } from './
 import { idbStorage } from './storage'
 import { SECTION_TYPES } from './sections'
 import { applyEditTo } from './optimize/apply'
+import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint } from './vault/sync'
 
 const HISTORY_LIMIT = 100
 const COALESCE_MS = 600
@@ -216,6 +217,45 @@ export const useStore = create(
         // ----- UI focus (not persisted): open a specific entry in the Content editor -----
         focus: null,
         setFocus: focus => set({ focus }),
+        // ----- vault: master data across all resumes (not part of undo history) -----
+        vault: emptyVault(),
+        syncVault: () => set(state => ({ vault: syncVault(state.vault, state.resumes) })),
+        updateVaultBullet: (itemId, bulletId, patch) => set(state => ({ vault: mapBullet(state.vault, itemId, bulletId, b => {
+          const next = { ...b, ...patch, updatedAt: Date.now() }
+          if (patch.text !== undefined && patch.text !== b.text) {
+            next.html = '' // plain text after editing
+            const fp = fingerprint(patch.text)
+            if (fp && !next.origins.includes(fp)) next.origins = [...next.origins, fp]
+          }
+          if (patch.tags) next.tagSource = patch.tagSource ?? 'user'
+          return next
+        }) })),
+        addVaultBullet: (itemId, text, role = '') => set(state => ({ vault: { ...state.vault, items: state.vault.items.map(it => it.id !== itemId ? it : {
+          ...it, bullets: [...it.bullets, { id: uid(), text, html: '', role, tags: ruleTags(text), tagSource: 'rules', origins: [fingerprint(text)], sources: [], manual: true, createdAt: Date.now(), updatedAt: Date.now() }],
+        }) } })),
+        deleteVaultBullet: (itemId, bulletId) => set(state => {
+          const item = state.vault.items.find(i => i.id === itemId)
+          const bullet = item?.bullets.find(b => b.id === bulletId)
+          if (!bullet) return state
+          return { vault: { ...state.vault, dismissed: [...new Set([...state.vault.dismissed, ...dismissKey(item, bullet)])], items: state.vault.items.map(it => it.id !== itemId ? it : { ...it, bullets: it.bullets.filter(b => b.id !== bulletId) }) } }
+        }),
+        addVaultItem: ({ kind, title, subtitle = '' }) => {
+          const id = uid()
+          set(state => ({ vault: { ...state.vault, items: [...state.vault.items, { id, key: `${kind}:manual:${id}`, kind, title, subtitle, roles: [], start: '', end: '', location: '', bullets: [], manual: true, createdAt: Date.now() }] } }))
+          return id
+        },
+        updateVaultItem: (itemId, patch) => set(state => ({ vault: { ...state.vault, items: state.vault.items.map(it => (it.id === itemId ? { ...it, ...patch } : it)) } })),
+        deleteVaultItem: itemId => set(state => {
+          const item = state.vault.items.find(i => i.id === itemId)
+          if (!item) return state
+          return { vault: { ...state.vault, dismissed: [...new Set([...state.vault.dismissed, item.key])], items: state.vault.items.filter(i => i.id !== itemId) } }
+        }),
+        // Apply AI tags: [{ itemId, bulletId, tags }]. Tags a user set by hand are left alone.
+        setVaultTags: updates => set(state => {
+          const byBullet = new Map(updates.map(u => [u.bulletId, u.tags]))
+          return { vault: { ...state.vault, items: state.vault.items.map(it => ({ ...it, bullets: it.bullets.map(b => (byBullet.has(b.id) && b.tagSource !== 'user' ? { ...b, tags: byBullet.get(b.id), tagSource: 'ai' } : b)) })) } }
+        }),
+
         pageCount: 1,
         setPageCount: pageCount => set(state => (state.pageCount === pageCount ? state : { pageCount })),
       }
@@ -223,10 +263,11 @@ export const useStore = create(
     {
       name: 'resume-builder',
       storage: createJSONStorage(() => idbStorage),
-      partialize: s => ({ resumes: s.resumes, currentId: s.currentId }),
+      partialize: s => ({ resumes: s.resumes, currentId: s.currentId, vault: s.vault }),
       // Fill in any settings added after a resume was first saved.
       merge: (persisted, current) => {
         const merged = { ...current, ...persisted }
+        merged.vault = persisted?.vault ?? emptyVault()
         merged.resumes = (merged.resumes ?? current.resumes).map(r => ({
           ...r,
           settings: { ...DEFAULT_SETTINGS, ...r.settings, applyAccent: { ...DEFAULT_SETTINGS.applyAccent, ...r.settings?.applyAccent } },
@@ -236,6 +277,11 @@ export const useStore = create(
     },
   ),
 )
+
+const mapBullet = (vault, itemId, bulletId, fn) => ({
+  ...vault,
+  items: vault.items.map(it => (it.id !== itemId ? it : { ...it, bullets: it.bullets.map(b => (b.id === bulletId ? fn(b) : b)) })),
+})
 
 // "Product Designer" → "Product Designer (v2)"; "Product Designer (v2)" → "Product Designer (v3)"
 function nextVersionName(name, resumes) {

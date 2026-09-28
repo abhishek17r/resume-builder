@@ -11,6 +11,7 @@ import { SortableList, SortableItem } from './Sortable'
 import RichText from './RichText'
 import AddContentModal from './AddContentModal'
 import { analyzeQuality } from '../lib/optimize/rules'
+import VaultPicker from './VaultPicker'
 
 // Open quality issues per entry, for the markers in the editor (same checks as Optimize).
 function useEntryIssues(resume) {
@@ -393,6 +394,7 @@ function EntryEditor({ section, entry, issues = [], focusBullet, onDone }) {
         </div>
         {issues.length > 0 && <EntryIssues issues={issues} focusBullet={focusBullet} onFix={i => applyEdit({ kind: 'autofix', fix: i.fix, target: i.target })} />}
         <FieldGrid fields={def.fields} entry={entry} onChange={(k, v) => setEntry(section.id, entry.id, k, v)} />
+        <VaultPicker section={section} entry={entry} />
       </div>
       <DoneBar onDone={onDone} />
     </div>
