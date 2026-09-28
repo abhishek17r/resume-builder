@@ -8,6 +8,7 @@ import { useStore, useResume } from '../lib/store'
 import { analyzeQuality, GROUPS } from '../lib/optimize/rules'
 import { resumeToPayload, refKey } from '../lib/optimize/serialize'
 import { post, health } from '../lib/api'
+import VaultSuggestions from './VaultSuggestions'
 
 const SEVERITY = {
   high: { label: 'High', dot: 'bg-red-500', order: 0 },
@@ -251,6 +252,7 @@ function QualityTab({ onShow }) {
           </button>
         )}
       </div>
+      <VaultSuggestions mode="quality" onShow={onShow} serverDown={server === false} />
     </>
   )
 }
@@ -515,6 +517,7 @@ function JobTab({ onShow }) {
           )}
         </div>
       )}
+      {job.analysis && job.match && <VaultSuggestions mode="job" onShow={onShow} serverDown={server === false} />}
     </>
   )
 }

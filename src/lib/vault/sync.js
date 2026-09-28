@@ -19,7 +19,7 @@ export const norm = t => (t || '').toLowerCase().replace(/<[^>]+>/g, ' ').replac
 export const fingerprint = text => norm(text).replace(/[.\s]+$/, '')
 
 const words = t => new Set(norm(t).split(' ').filter(w => w.length > 2))
-function similar(a, b) {
+export function similar(a, b) {
   const A = words(a)
   const B = words(b)
   if (!A.size || !B.size) return false
@@ -55,7 +55,7 @@ function itemsOf(html) {
 }
 
 // Resume entry → vault entity description + its bullets.
-function entityOf(section, entry) {
+export function entityOf(section, entry) {
   const kind = KIND_OF_SECTION[section.type]
   if (!kind) return null
   const e = entry

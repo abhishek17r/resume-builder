@@ -1,6 +1,6 @@
 import { SECTION_TYPES } from '../sections'
 import { uid } from '../defaults'
-import { setItem, moveItemUp, getItems } from './bullets'
+import { setItem, moveItemUp, getItems, appendBullet } from './bullets'
 import { autoFixText } from './rules'
 
 const richKey = type => SECTION_TYPES[type]?.fields.find(f => f.kind === 'rich')?.key
@@ -8,7 +8,7 @@ const escHtml = t => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>':
 
 // Apply an optimiser edit to a resume draft in place. Returns false if its target no longer exists.
 // edit: { kind, target: { sectionId, entryId, bullet }, after, fix? }
-//   kind: rewrite_bullet | rewrite_summary | add_skill | move_bullet_up | autofix
+//   kind: rewrite_bullet | rewrite_summary | add_skill | move_bullet_up | autofix | add_bullet (after = text, html? = formatted)
 export function applyEditTo(r, edit) {
   const { kind, target = {}, after = '' } = edit
   const sec = r.sections.find(s => s.id === target.sectionId)
@@ -38,6 +38,10 @@ export function applyEditTo(r, edit) {
     }
     if (!getItems(entry[key])[target.bullet]) return false
     entry[key] = setItem(entry[key], target.bullet, after)
+    return true
+  }
+  if (kind === 'add_bullet' && key) {
+    entry[key] = appendBullet(entry[key], edit.html || escHtml(after.trim()))
     return true
   }
   if (kind === 'move_bullet_up' && key) {
