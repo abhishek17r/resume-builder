@@ -94,9 +94,33 @@ const looksEmphasised = (line, bodyBold) => {
   return !!(line.heading || line.size >= 1.15 || (line.bold && !bodyBold) || (text === text.toUpperCase() && /[A-Z]{3}/.test(text)))
 }
 
-function isHeading(line, bodyBold) {
+// The document's section-heading style, learned from lines that are clearly headings ("Experience", "Skills"…).
+// When most of them share a size and case, a smaller line that happens to say "Languages" or "Projects"
+// (a skill group, a sub-heading) isn't a section heading.
+function headingStyle(lines, bodyBold) {
+  const sure = lines.filter(l => l.text.length <= 40 && !BULLET.test(l.text) && !l.heading && looksEmphasised(l, bodyBold) && headingType(l.text.replace(/[:：]$/, '')))
+  if (sure.length < 3) return null
+  const bucket = l => Math.round(l.size * 20) / 20
+  const counts = new Map()
+  for (const l of sure) counts.set(bucket(l), (counts.get(bucket(l)) ?? 0) + 1)
+  const [size, n] = [...counts].sort((a, b) => b[1] - a[1])[0]
+  if (n < 3 || n / sure.length < 0.6) return null
+  const isCaps = l => l.text === l.text.toUpperCase() && /[A-Z]{3}/.test(l.text)
+  const same = sure.filter(l => bucket(l) === size)
+  return { size, caps: same.every(isCaps) }
+}
+
+const fitsStyle = (line, style) => {
+  if (!style || line.heading) return true
+  if (line.size < style.size - 0.08) return false
+  const text = line.text.replace(/[:：]$/, '')
+  return !style.caps || (text === text.toUpperCase() && /[A-Z]{3}/.test(text))
+}
+
+function isHeading(line, bodyBold, style = null) {
   const text = line.text.replace(/[:：]$/, '')
   if (text.length > 40 || BULLET.test(line.text)) return null
+  if (!fitsStyle(line, style)) return null
   const emphasised = looksEmphasised(line, bodyBold)
   const known = headingType(text, emphasised)
   if (known) return known
@@ -351,6 +375,10 @@ function listEntries(lines, type) {
       continue
     }
     if (type === 'languages') {
+      // "English" (bold) over "Native" (plain) is one language with its level.
+      const last = out.at(-1)
+      if (line.bold && text.length <= 40 && !/[,;|•·]/.test(text)) { out.push({ id: uid(), language: clean(text), info: '', level: -1, _group: true }); continue }
+      if (last?._group && !last.info && !/[,;|•·]/.test(text)) { last.info = clean(text); continue }
       for (const part of text.split(/\s*[,;|•·]\s*/).filter(Boolean)) {
         const m = /^(.*?)\s*[(–—-]\s*(.*?)\)?$/.exec(part)
         out.push({ id: uid(), language: clean(m ? m[1] : part), info: m ? clean(m[2]) : '', level: -1 })
@@ -423,12 +451,13 @@ function buildSection(type, heading, lines, col = null) {
 export function parseResume(lines, name = 'Imported resume') {
   const bodyBold = lines.filter(l => l.bold).length > lines.length * 0.6
   const blocks = [{ type: 'header', heading: '', lines: [] }]
+  const style = headingStyle(lines, bodyBold)
   const firstKnown = lines.findIndex(l => l.text.length <= 40 && !BULLET.test(l.text) && headingType(l.text.replace(/[:：]$/, ''), looksEmphasised(l, bodyBold)))
   lines.forEach((line, i) => {
     const inHeader = i < firstKnown || (firstKnown < 0 && i < 6)
     const headerHeading = inHeader && i > 1 && line.bold && isHeading(line, bodyBold) === 'custom' && lines[i + 1] && !EMAIL.test(lines[i + 1].text)
     if (inHeader && !headerHeading) { blocks[0].lines.push(line); return }
-    const type = isHeading(line, bodyBold)
+    const type = isHeading(line, bodyBold, style)
     if (type) { line.role = 'heading'; blocks.push({ type, heading: titleCase(line.text.replace(/[:：]$/, '')), col: line.col ?? null, lines: [] }) }
     else blocks.at(-1).lines.push(line)
   })

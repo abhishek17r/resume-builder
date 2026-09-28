@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   ArrowLeft, FilePlus2, Copy, Sparkles, Upload, FileText, Loader2, AlertCircle, CheckCircle2,
-  Type, LayoutTemplate, Palette, FileArchive, ChevronRight,
+  Type, LayoutTemplate, Palette, FileArchive, ChevronRight, Target, Circle, Archive,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { SECTION_TYPES } from '../lib/sections'
 import { importResumeFile, importLinkedIn, ACCEPT, LINKEDIN_ACCEPT } from '../lib/import'
 import { useLabels, LabelChip } from './ResumeLabel'
 import { LinkedInIcon } from './BrandIcons'
+import { post, health } from '../lib/api'
+import { composePayload, buildFromVault } from '../lib/vault/compose'
+import { resumeToPayload } from '../lib/optimize/serialize'
 
 // Page nav: two groups, each item a page of its own.
 const NAV = [
@@ -16,6 +19,9 @@ const NAV = [
     { id: 'blank', icon: FilePlus2, label: 'Blank resume' },
     { id: 'sample', icon: Sparkles, label: 'From sample' },
     { id: 'copy', icon: Copy, label: 'Copy a resume' },
+  ] },
+  { group: 'Tailor', items: [
+    { id: 'job', icon: Target, label: 'From a job description' },
   ] },
   { group: 'Import', items: [
     { id: 'file', icon: Upload, label: 'From a file' },
@@ -32,6 +38,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
   const [copyId, setCopyId] = useState(currentId ?? resumes[0]?.id ?? null)
   const [imp, setImp] = useState({ status: 'idle' }) // idle | reading | ready | error — per import tab
   const [keep, setKeep] = useState({ layout: true, design: true })
+  const [jd, setJd] = useState({ text: '', pages: 1, status: 'idle', steps: [] }) // job tab
 
   useEffect(() => { setTab(initialTab) }, [initialTab])
   // Switching between import pages starts over.
@@ -61,13 +68,55 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
     copy: copySource ? `${copySource.name.replace(/\s*\(v\d+\)$/, '')} (v2)` : 'New version',
     file: imp.file ? imp.file.name.replace(/\.[^.]+$/, '') : 'Name of the imported resume',
     linkedin: imp.status === 'ready' ? imp.build().name : 'LinkedIn import',
+    job: 'Job title – Company (from the job)',
   }[tab]
 
-  const canCreate = importing ? imp.status === 'ready' : tab !== 'copy' || !!copySource
+  const canCreate = importing ? imp.status === 'ready' : tab === 'job' ? jd.text.trim().length >= 80 && !!copySource && jd.status !== 'running' : tab !== 'copy' || !!copySource
+
+  // Sync the vault → read the job → let AI pick vault content → build → check the match.
+  const buildFromJob = async () => {
+    const steps = []
+    const step = (id, label) => { steps.push({ id, label, status: 'running' }); setJd(j => ({ ...j, status: 'running', steps: [...steps], error: null })) }
+    const finish = detail => { const last = steps.at(-1); last.status = 'done'; if (detail) last.detail = detail; setJd(j => ({ ...j, steps: [...steps] })) }
+    try {
+      step('sync', 'Syncing your vault')
+      useStore.getState().syncVault()
+      const { vault, resumes: all } = useStore.getState()
+      const payload = composePayload(vault)
+      const bulletTotal = payload.items.reduce((n, i) => n + i.bullets.length, 0)
+      if (!payload.items.some(i => i.kind === 'experience' || i.kind === 'projects')) throw new Error('Your vault has no experience or projects yet. Add content to a resume or the Vault first.')
+      finish(`${payload.items.length} entries · ${bulletTotal} bullets`)
+
+      step('analyze', 'Reading the job description')
+      const { analysis, mock } = await post('/api/jd/analyze', { jobDescription: jd.text })
+      finish([analysis.title, analysis.company].filter(Boolean).join(' · '))
+
+      step('compose', 'Choosing your most relevant content')
+      const { composition } = await post('/api/resume/compose', { analysis, targetBullets: jd.pages === 1 ? 16 : 30, items: payload.items })
+      const company = analysis.company?.trim()
+      const finalName = name.trim() || [analysis.title, company].filter(Boolean).join(' – ') || 'Tailored resume'
+      const { resume, stats } = buildFromVault({ vault, base: copySource, resumes: all, composition, name: finalName, label: label.trim() || (company ? company.toLowerCase() : copySource.label ?? '') })
+      finish(`${stats.bullets} bullets from ${stats.entries} entries`)
+
+      step('match', 'Checking the match')
+      const { match } = await post('/api/jd/match', { resume: resumeToPayload(resume), analysis })
+      finish(`${match.matchScore}/100`)
+
+      resume.optimize = { job: { text: jd.text, analysis, match, mock, matchedAt: Date.now(), suggestions: null, decisions: {}, built: { gaps: composition.gaps, bullets: stats.bullets, at: Date.now() } } }
+      const id = addResume(resume)
+      useStore.getState().setOptimizeTab('job')
+      onCreated?.(id, 'optimize')
+    } catch (err) {
+      const last = steps.at(-1)
+      if (last) last.status = 'error'
+      setJd(j => ({ ...j, status: 'error', steps: [...steps], error: err.message || 'Something went wrong.' }))
+    }
+  }
 
   const submit = e => {
     e.preventDefault()
     if (!canCreate) return
+    if (tab === 'job') { buildFromJob(); return }
     const finalName = name.trim()
     let id
     if (importing) id = addResume({ ...imp.build(keep), name: finalName || placeholder, label: label.trim() })
@@ -157,6 +206,8 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
             </>
           )}
 
+          {tab === 'job' && <FromJob jd={jd} setJd={setJd} resumes={resumes} baseId={copyId} setBaseId={setCopyId} />}
+
           {importing && imp.status === 'ready' && <ImportSummary imp={imp} keep={keep} setKeep={setKeep} />}
 
           <div className="mt-7 grid gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2">
@@ -175,12 +226,63 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
             <button type="button" onClick={onCancel} className="rounded-xl px-5 py-3 font-semibold text-muted hover:bg-field hover:text-ink">Cancel</button>
             <button type="submit" disabled={!canCreate}
               className="cta rounded-xl px-8 py-3 text-[16px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100">
-              {importing ? 'Create from import' : tab === 'copy' ? 'Create copy' : 'Create resume'}
+              {tab === 'job' ? (jd.status === 'running' ? 'Building…' : 'Build from vault') : importing ? 'Create from import' : tab === 'copy' ? 'Create copy' : 'Create resume'}
             </button>
           </div>
         </form>
       </div>
     </div>
+  )
+}
+
+function FromJob({ jd, setJd, resumes, baseId, setBaseId }) {
+  const vault = useStore(s => s.vault)
+  const syncVault = useStore(s => s.syncVault)
+  const [server, setServer] = useState(null)
+  useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const bullets = vault.items.reduce((n, i) => n + i.bullets.length, 0)
+  const running = jd.status === 'running'
+  return (
+    <>
+      <Intro title="From a job description" text="Paste a job. Your vault is synced first, then AI picks your most relevant roles, bullets, projects and skills, word for word. Nothing is invented. You land in Optimize with the match score." />
+      <div className="mt-4 flex items-center gap-2 rounded-lg bg-soft px-3 py-2 text-[13px] text-muted">
+        <Archive size={15} className="text-brand" /> Vault: {vault.items.length} entries · {bullets} bullets
+        <span className="ml-auto">{server === false ? <span className="text-red-600">AI server offline</span> : server?.mock ? <span className="text-amber-700">Demo mode (no API key)</span> : server ? <span className="text-emerald-700">AI connected</span> : 'Checking AI server…'}</span>
+      </div>
+      <textarea className="field mt-4 min-h-[200px] text-[14px] leading-relaxed" disabled={running} placeholder="Paste the full job description: title, responsibilities and requirements."
+        value={jd.text} onChange={e => setJd(j => ({ ...j, text: e.target.value }))} />
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label">Contact details & design from</label>
+          <select className="field" value={baseId ?? ''} disabled={running} onChange={e => setBaseId(e.target.value)}>
+            {[...resumes].sort((a, b) => b.updatedAt - a.updatedAt).map(r => <option key={r.id} value={r.id}>{r.name}{r.label ? ` · ${r.label}` : ''}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Length</label>
+          <div className="flex gap-1 rounded-lg bg-field p-1">
+            {[1, 2].map(n => (
+              <button key={n} type="button" disabled={running} onClick={() => setJd(j => ({ ...j, pages: n }))}
+                className={clsx('flex-1 rounded-md py-1.5 text-[14px] font-medium', jd.pages === n ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink')}>
+                {n} page{n > 1 ? 's' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {jd.steps.length > 0 && (
+        <ol className="mt-5 space-y-2 rounded-xl bg-soft p-4 text-[14px]">
+          {jd.steps.map(s => (
+            <li key={s.id} className="flex items-center gap-2">
+              {s.status === 'running' ? <Loader2 size={16} className="animate-spin text-brand" /> : s.status === 'done' ? <CheckCircle2 size={16} className="text-emerald-600" /> : s.status === 'error' ? <AlertCircle size={16} className="text-red-600" /> : <Circle size={16} className="text-muted" />}
+              <span className="text-ink">{s.label}</span>
+              {s.detail && <span className="ml-auto text-[13px] text-muted">{s.detail}</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+      {jd.status === 'error' && <div className="mt-3 flex gap-2 rounded-lg bg-red-50 p-3 text-[14px] text-red-700"><AlertCircle size={18} className="mt-0.5 shrink-0" /> {jd.error}</div>}
+    </>
   )
 }
 

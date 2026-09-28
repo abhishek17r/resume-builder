@@ -18,7 +18,8 @@ const SEVERITY = {
 }
 
 export default function OptimizePanel({ onShow }) {
-  const [tab, setTab] = useState('quality')
+  const [tab, setTab] = useState(() => useStore.getState().optimizeTab ?? 'quality')
+  useEffect(() => { useStore.getState().setOptimizeTab(null) }, [])
   return (
     <div className="space-y-5 pb-24">
       <div className="card flex gap-1 p-1.5">
@@ -413,6 +414,15 @@ function JobTab({ onShow }) {
         <div className="mt-3"><ErrorNote error={error} /></div>
       </div>
 
+      {job.built && (
+        <div className="card flex gap-3 p-5 text-[14px]">
+          <Sparkles size={18} className="mt-0.5 shrink-0 text-brand" />
+          <div>
+            <p className="text-ink">Built from your vault for this job: {job.built.bullets} of your own bullets, word for word. Review it in Content, then use the suggestions below to fine-tune.</p>
+            {job.built.gaps?.length > 0 && <p className="mt-1 text-muted">Nothing in your vault shows: {job.built.gaps.join('; ')}. Add it to the Vault if you have that experience.</p>}
+          </div>
+        </div>
+      )}
       {job.analysis && job.match && (
         <div className="card p-6">
           <div className="flex items-center gap-5">

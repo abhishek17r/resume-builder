@@ -216,6 +216,8 @@ export const useStore = create(
 
         // ----- UI focus (not persisted): open a specific entry in the Content editor -----
         focus: null,
+        optimizeTab: null, // which Optimize tab to open next (e.g. 'job' after building from a job)
+        setOptimizeTab: optimizeTab => set({ optimizeTab }),
         setFocus: focus => set({ focus }),
         // ----- vault: master data across all resumes (not part of undo history) -----
         vault: emptyVault(),

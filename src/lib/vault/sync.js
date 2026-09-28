@@ -80,7 +80,8 @@ export function entityOf(section, entry) {
       return { kind, title: e.course || '', subtitle: e.institution || '', bullets }
     case 'skills':
     case 'languages': {
-      const group = section.type === 'languages' ? 'Languages' : e.skill || 'Skills'
+      // Spoken languages get their own group so they don't merge with a skills group called "Languages".
+      const group = section.type === 'languages' ? SPOKEN_LANGUAGES : e.skill || 'Skills'
       const list = section.type === 'languages'
         ? [[e.language, e.info].filter(Boolean).join(' – ')]
         : (e.info || '').split(/\s*[,;|]\s*/)
@@ -94,6 +95,8 @@ export function entityOf(section, entry) {
       return null
   }
 }
+
+export const SPOKEN_LANGUAGES = 'Spoken languages'
 
 export const itemKey = (kind, title, subtitle) => `${kind}:${norm(title)}${kind === 'experience' || kind === 'skills' ? '' : `|${norm(subtitle)}`}`
 
@@ -136,6 +139,14 @@ export function syncVault(vault, resumes) {
           })
         }
       }
+    }
+  }
+  // Older vaults merged spoken languages into a skills group named "Languages": drop those copies.
+  const spoken = new Set(v.items.filter(i => i.kind === 'skills' && i.title === SPOKEN_LANGUAGES).flatMap(i => i.bullets.flatMap(b => b.origins)))
+  if (spoken.size) {
+    for (const item of v.items) {
+      if (item.kind !== 'skills' || item.title === SPOKEN_LANGUAGES) continue
+      item.bullets = item.bullets.filter(b => b.manual || !b.origins.some(fp => spoken.has(fp)))
     }
   }
   v.syncedAt = now

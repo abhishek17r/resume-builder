@@ -87,7 +87,7 @@ export default function App() {
     <CreatePage
       initialTab={createTab}
       onCancel={() => setView(empty ? 'overview' : returnTo === 'new' ? 'overview' : returnTo)}
-      onCreated={() => setView('content')}
+      onCreated={(id, next) => setView(next ?? 'content')}
     />
   )
 
