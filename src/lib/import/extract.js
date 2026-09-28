@@ -186,9 +186,17 @@ function pdfSegments(content, page, pageH, paint) {
   for (const row of rows) {
     row.items.sort((a, b) => a.x - b.x)
     let cur = null
+    let wideBlank = false
     for (const it of row.items) {
+      // pdf.js inserts a synthetic space spanning a horizontal gap, which keeps "Title    Jan 2021 – Present"
+      // on one line. Across such a gap a clear change of font size is separate text: "Jane Smith    Product Manager".
+      if (!it.str.trim() && it.w >= it.size * 1.5) { wideBlank = true }
+      const lastSize = cur?.parts.findLast(p => !p.space && p.s.trim())?.size
+      const sizeJump = wideBlank && it.str.trim() && lastSize && Math.abs(it.size - lastSize) / Math.max(it.size, lastSize) > 0.2
+      if (it.str.trim()) wideBlank = false
       const gap = cur ? it.x - cur.x1 : 0
-      if (!cur || gap > Math.max(24, it.size * 2.5)) {
+      if (sizeJump) { cur.x1 = cur.textX1; while (cur.parts.at(-1)?.s.trim() === '') cur.parts.pop() } // drop the bridging space
+      if (!cur || gap > Math.max(24, it.size * 2.5) || sizeJump) {
         cur = { x: it.x, x1: it.x + it.w, y: row.y, parts: [] }
         segs.push(cur)
       } else if (gap > it.size * 0.15 && !cur.parts.at(-1)?.s.endsWith(' ') && !it.str.startsWith(' ')) {
@@ -196,6 +204,7 @@ function pdfSegments(content, page, pageH, paint) {
       }
       cur.parts.push({ s: it.str, bold: it.bold, italic: it.italic, size: it.size, family: it.family ?? it.fontRaw, color: it.color })
       cur.x1 = Math.max(cur.x1, it.x + it.w)
+      if (it.str.trim()) cur.textX1 = Math.max(cur.textX1 ?? 0, it.x + it.w)
     }
   }
 
@@ -325,7 +334,22 @@ async function extractDocx(file) {
       pushBlock(node)
     }
   }
+  // A paragraph with manual line breaks (Shift+Enter) is several lines: "Name⏎Title", "School⏎Degree⏎Dates".
   const pushBlock = node => {
+    if (node.querySelector('br')) {
+      const parts = node.innerHTML.split(/<br\s*\/?>/i)
+      if (parts.length > 1) {
+        for (const part of parts) {
+          const el = node.ownerDocument.createElement(node.tagName)
+          el.innerHTML = part
+          pushLine(el)
+        }
+        return
+      }
+    }
+    pushLine(node)
+  }
+  const pushLine = node => {
     const tag = node.tagName
     const text = node.textContent.replace(/\s+/g, ' ').trim()
     if (!text) return
