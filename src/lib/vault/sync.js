@@ -119,6 +119,45 @@ export function entityOf(section, entry) {
 
 export const SPOKEN_LANGUAGES = 'Spoken languages'
 
+// Two roles are the same role when their titles match (same start), or when their dates match: a resume
+// imported twice may carry the title differently ("Software Engineer" vs "Software Engineer, Airbnb 07/2016 –").
+export const sameRole = (a, b) =>
+  (norm(a.title) === norm(b.title) && (a.start || '') === (b.start || '')) ||
+  (!!a.start && a.start === b.start && (a.end || '') === (b.end || ''))
+
+// For duplicates of one role: a clean title (no dates, "|" pieces or the company's name in it) beats a
+// garbled one; between clean ones, the fuller title wins.
+const titleQuality = (t, item) => {
+  const garbled = /\d{1,2}\/\d{4}|\b(19|20)\d{2}\b|\s\|\s|[–—-]\s*$/.test(t) || (norm(item.title).length > 2 && norm(t).includes(norm(item.title)))
+  return (garbled ? 0 : 1000) + Math.min(t.length, 80)
+}
+
+// Keep one role for `role` on the item; returns the role's kept title. Bullets follow a renamed role.
+function mergeRole(item, role) {
+  const same = item.roles.find(x => sameRole(x, role))
+  if (!same) { item.roles.push({ ...role }); return role.title }
+  if (!same.location && role.location) same.location = role.location
+  if (titleQuality(role.title, item) > titleQuality(same.title, item)) {
+    for (const b of item.bullets) if (b.role === same.title) b.role = role.title
+    same.title = role.title
+  }
+  return same.title
+}
+
+// Collapse duplicate roles already in a vault (from earlier imports).
+function dedupeRoles(item) {
+  const roles = item.roles
+  item.roles = []
+  for (const r of roles) mergeRole(item, r)
+  const kept = new Set(item.roles.map(r => r.title))
+  for (const b of item.bullets) {
+    if (!b.role || kept.has(b.role)) continue
+    const old = roles.find(r => r.title === b.role)
+    const into = old && item.roles.find(r => sameRole(r, old))
+    if (into) b.role = into.title
+  }
+}
+
 export const itemKey = (kind, title, subtitle) => `${kind}:${norm(title)}${kind === 'experience' || kind === 'skills' ? '' : `|${norm(subtitle)}`}`
 
 /** Merge every resume's content into the vault. Pure: returns a new vault. */
@@ -146,7 +185,7 @@ export function syncVault(vault, resumes) {
           v.items.push(item)
           byKey.set(key, item)
         }
-        if (ent.role?.title && !item.roles.some(x => norm(x.title) === norm(ent.role.title) && x.start === ent.role.start)) item.roles.push(ent.role)
+        const roleTitle = ent.role?.title ? mergeRole(item, ent.role) : ''
         const source = { resumeId: r.id, sectionId: section.id, entryId: entry.id }
 
         for (const b of ent.bullets) {
@@ -166,7 +205,7 @@ export function syncVault(vault, resumes) {
             continue
           }
           item.bullets.push({
-            id: uid(), text: b.text, html: b.html || '', role: ent.role?.title || '',
+            id: uid(), text: b.text, html: b.html || '', role: roleTitle,
             tags: ruleTags(b.text), tagSource: 'rules', origins: [fp], sources: [source], createdAt: now, updatedAt: now,
           })
         }
@@ -181,6 +220,7 @@ export function syncVault(vault, resumes) {
       item.bullets = item.bullets.filter(b => b.manual || !b.origins.some(fp => spoken.has(fp)))
     }
   }
+  for (const item of v.items) if (item.roles?.length > 1) dedupeRoles(item)
   v.syncedAt = now
   return v
 }

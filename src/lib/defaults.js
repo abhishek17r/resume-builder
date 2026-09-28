@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS = {
   subtitleStyle: 'bold', // bold | italic | normal
   subtitlePlacement: 'same', // same (Title, Subtitle) | next (own line)
   listStyle: 'bullet', // bullet | hyphen | none
+  bulletIndent: 0, // mm the bullet list sits in from the entry's text
   // Headings
   headingStyle: 'plain', // plain | underline | box | line | bar | dotted | fill | overline
   headingCaps: 'capitalize', // capitalize | uppercase

@@ -94,7 +94,19 @@ export function planFromVault({ vault, composition }) {
     const item = items.get(pick.itemRef)
     const type = item && SECTION_OF[item.kind]
     if (!type || type === 'education') continue
-    entries.push({ type, item, role: item.roles.find(r => r.title === pick.roleTitle) ?? null, bullets: pick.bulletRefs.map(ref => bullets.get(ref)).filter(Boolean) })
+    const chosen = pick.bulletRefs.map(ref => bullets.get(ref)).filter(Boolean)
+    const role = item.roles.find(r => norm(r.title) === norm(pick.roleTitle))
+    // A company picked without a role but holding several: one entry per role, bullets by their role.
+    if (!role && item.roles.length > 1) {
+      for (const r of item.roles) {
+        if (entries.some(e => e.item === item && e.role === r)) continue
+        const own = chosen.filter(b => norm(b.role) === norm(r.title))
+        if (own.length) entries.push({ type, item, role: r, bullets: own })
+      }
+      continue
+    }
+    if (entries.some(e => e.item === item && e.role === (role ?? item.roles[0] ?? null))) continue
+    entries.push({ type, item, role: role ?? item.roles[0] ?? null, bullets: chosen })
   }
 
   // Skills: grouped as in the vault, in the order the AI ranked them.

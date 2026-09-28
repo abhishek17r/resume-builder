@@ -361,6 +361,7 @@ function docCss(s) {
     .rdoc p, .rdoc ul, .rdoc ol { margin: 0; }
     .rdoc .rich ul { list-style: ${s.listStyle === 'hyphen' ? '"–  "' : s.listStyle === 'none' ? 'none' : 'disc'}; padding-left: ${s.listStyle === 'none' ? '0' : s.listStyle === 'hyphen' ? '1.1em' : '0.95em'}; }
     .rdoc .rich ol { list-style: decimal; padding-left: 1.4em; }
+    .rdoc .rich ul, .rdoc .rich ol { margin-left: ${s.bulletIndent ?? 0}mm; }
     .rdoc .rich li::marker { font-size: .9em; }
     .rdoc .rich b, .rdoc .rich strong { font-weight: 700; }
     .rdoc a { color: ${s.linkBlue ? '#1d4ed8' : 'inherit'}; text-decoration: ${s.linkUnderline ? 'underline' : 'none'}; }

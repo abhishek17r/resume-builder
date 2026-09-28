@@ -185,6 +185,9 @@ export default function CustomizePanel() {
           <Field label="List Style">
             <Segmented value={s.listStyle ?? 'bullet'} onChange={v => set('listStyle', v)} options={[{ value: 'bullet', label: '• Bullet' }, { value: 'hyphen', label: '– Hyphen' }, { value: 'none', label: 'None' }]} />
           </Field>
+          <Field label="Bullet Indent" value={`${s.bulletIndent ?? 0} mm`}>
+            <StepScale value={s.bulletIndent ?? 0} min={0} max={8} step={1} onChange={v => set('bulletIndent', v)} />
+          </Field>
         </Card>
 
         <Card id="c-headings" title="Section Headings">
