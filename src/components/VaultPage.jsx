@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { Search, RefreshCw, Sparkles, Plus, Trash2, Loader2, Tag, X, LayoutList, Grid3x3, AlertCircle, Pencil, Check } from 'lucide-react'
+import { Search, RefreshCw, Sparkles, Plus, Trash2, Loader2, Tag, X, LayoutList, Grid3x3, AlertCircle, Pencil, Check, Wand2, EyeOff, RotateCcw, ChevronDown } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { TAGS, TAG_BY_ID, VAULT_KINDS } from '../config/taxonomy'
 import { post, health } from '../lib/api'
+import { scoreVault, scoreBg } from '../lib/vault/score'
+import { autoFixText } from '../lib/optimize/rules'
+import { Ring } from './OptimizePanel'
 
 const KIND_LABEL = Object.fromEntries(VAULT_KINDS.map(k => [k.id, k.label]))
 const monthYear = v => (v ? v.split('-').reverse().join('/') : '')
@@ -19,19 +22,22 @@ export default function VaultPage() {
   const [view, setView] = useState('list')
   const [tagging, setTagging] = useState({ status: 'idle' })
   const [server, setServer] = useState(null)
+  const [needsWorkOnly, setNeedsWorkOnly] = useState(false)
 
   useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = vault.items
+  const scores = useMemo(() => scoreVault(vault), [vault])
+  const needsWork = b => (scores.byBullet[b.id]?.score ?? 100) < 70
   const kindsPresent = VAULT_KINDS.filter(k => items.some(i => i.kind === k.id))
   const allBullets = items.flatMap(i => i.bullets.map(b => ({ item: i, b })))
 
   // Items in scope for the selected vertical (kind or single item).
   const scopedItems = selected === 'all' ? items : items.filter(i => i.kind === selected || i.id === selected)
-  const matches = b => (!tagFilter.size || [...tagFilter].every(t => b.tags.includes(t))) && (!untaggedOnly || !b.tags.length) && (!q.trim() || b.text.toLowerCase().includes(q.trim().toLowerCase()))
+  const matches = b => (!tagFilter.size || [...tagFilter].every(t => b.tags.includes(t))) && (!untaggedOnly || !b.tags.length) && (!needsWorkOnly || needsWork(b)) && (!q.trim() || b.text.toLowerCase().includes(q.trim().toLowerCase()))
   const visible = scopedItems
     .map(item => ({ item, bullets: item.bullets.filter(matches) }))
-    .filter(({ item, bullets }) => bullets.length || (!tagFilter.size && !untaggedOnly && (!q.trim() || item.title.toLowerCase().includes(q.trim().toLowerCase()))))
+    .filter(({ item, bullets }) => bullets.length || (!tagFilter.size && !untaggedOnly && !needsWorkOnly && (!q.trim() || item.title.toLowerCase().includes(q.trim().toLowerCase()))))
 
   const tagCounts = useMemo(() => {
     const scoped = scopedItems.flatMap(i => i.bullets)
@@ -114,7 +120,7 @@ export default function VaultPage() {
               <div key={k.id} className="mt-2">
                 <NavRow active={selected === k.id} onClick={() => setSelected(k.id)} label={k.label} count={items.filter(i => i.kind === k.id).reduce((n, i) => n + i.bullets.length, 0)} bold />
                 {items.filter(i => i.kind === k.id).map(i => (
-                  <NavRow key={i.id} active={selected === i.id} onClick={() => setSelected(i.id)} label={i.title} count={i.bullets.length} indent />
+                  <NavRow key={i.id} active={selected === i.id} onClick={() => setSelected(i.id)} label={i.title} count={i.bullets.length} score={scores.byItem[i.id]} indent />
                 ))}
               </div>
             ))}
@@ -125,6 +131,7 @@ export default function VaultPage() {
         </aside>
 
         <div className="min-w-0 flex-1 space-y-4">
+          {scores.count > 0 && <ScoreCard scores={scores} active={needsWorkOnly} onNeedsWork={() => setNeedsWorkOnly(v => !v)} />}
           {/* horizontal dimension */}
           <div className="card space-y-3 p-4">
             <div className="flex flex-wrap gap-1.5">
@@ -145,8 +152,8 @@ export default function VaultPage() {
                 <Search size={15} className="text-muted" />
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search bullets" className="w-full bg-transparent py-2 text-[14px] outline-none" />
               </label>
-              {(tagFilter.size > 0 || untaggedOnly || q) && (
-                <button onClick={() => { setTagFilter(new Set()); setUntaggedOnly(false); setQ('') }} className="text-[13px] font-medium text-muted hover:text-ink">Clear filters</button>
+              {(tagFilter.size > 0 || untaggedOnly || needsWorkOnly || q) && (
+                <button onClick={() => { setTagFilter(new Set()); setUntaggedOnly(false); setNeedsWorkOnly(false); setQ('') }} className="text-[13px] font-medium text-muted hover:text-ink">Clear filters</button>
               )}
             </div>
           </div>
@@ -155,23 +162,68 @@ export default function VaultPage() {
             ? <Matrix items={scopedItems} onPick={(itemId, tagId) => { setSelected(itemId); setTagFilter(new Set([tagId])); setView('list') }} />
             : visible.length === 0
               ? <div className="card p-8 text-center text-muted">{items.length ? 'Nothing matches these filters.' : 'Your vault fills up automatically as you add content to resumes.'}</div>
-              : visible.map(({ item, bullets }) => <ItemCard key={item.id} item={item} bullets={bullets} />)}
+              : visible.map(({ item, bullets }) => <ItemCard key={item.id} item={item} bullets={bullets} scores={scores} server={server} />)}
         </div>
       </div>
     </div>
   )
 }
 
-function NavRow({ active, onClick, label, count, bold, indent }) {
+function ScorePill({ score, onClick, open, title }) {
+  if (score == null) return null
+  const Tag = onClick ? 'button' : 'span'
+  return (
+    <Tag onClick={onClick} title={title} className={clsx('inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums', scoreBg(score))}>
+      {score}{onClick && <ChevronDown size={11} className={clsx('transition', open && 'rotate-180')} />}
+    </Tag>
+  )
+}
+
+function Bar({ label, value, blurb }) {
+  return (
+    <div title={blurb}>
+      <div className="mb-1 flex justify-between text-[13px]">
+        <span className="font-semibold text-ink">{label}</span>
+        <span className="tabular-nums text-muted">{value}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-field">
+        <div className="h-full rounded-full transition-all" style={{ width: `${value}%`, background: value >= 80 ? '#16a34a' : value >= 60 ? '#d97706' : '#dc2626' }} />
+      </div>
+    </div>
+  )
+}
+
+// Same basis as the resume's Optimize score, limited to what a bullet can show on its own.
+function ScoreCard({ scores, active, onNeedsWork }) {
+  return (
+    <div className="card flex flex-wrap items-center gap-6 p-5">
+      <Ring value={scores.overall} size={96} label="bullet score" />
+      <div className="min-w-[220px] flex-1 space-y-2.5">
+        <Bar label="Impact" value={scores.impact} blurb="Measurable results, strong opening verbs and readable length (50/30/20)." />
+        <Bar label="Clarity" value={scores.clarity} blurb="Share of bullets with no tense, first-person or cliché issues." />
+        <p className="text-[12px] text-muted">
+          Scored with the same checks as Optimize, across {scores.count} achievement bullets. ATS and Completeness depend on a whole resume, so they’re scored in each resume’s Optimize tab.
+        </p>
+      </div>
+      <button onClick={onNeedsWork} disabled={!scores.needsWork && !active}
+        className={clsx('rounded-lg px-4 py-2 text-[14px] font-semibold ring-1 transition disabled:opacity-40', active ? 'bg-rose-600 text-white ring-rose-600' : 'bg-white text-rose-700 ring-rose-200 hover:ring-rose-400')}>
+        {scores.needsWork ? `${scores.needsWork} need work` : 'All bullets 70+'}
+      </button>
+    </div>
+  )
+}
+
+function NavRow({ active, onClick, label, count, score, bold, indent }) {
   return (
     <button onClick={onClick} className={clsx('flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-[14px] transition', indent ? 'pl-6' : 'pl-3', active ? 'bg-brand-soft text-brand' : 'text-ink hover:bg-soft', bold && 'font-semibold')}>
       <span className="min-w-0 flex-1 truncate">{label}</span>
+      <ScorePill score={score} title="Average bullet score" />
       <span className="shrink-0 text-[12px] font-normal text-muted">{count}</span>
     </button>
   )
 }
 
-function ItemCard({ item, bullets }) {
+function ItemCard({ item, bullets, scores, server }) {
   const { updateVaultItem, deleteVaultItem, addVaultBullet } = useStore()
   const [adding, setAdding] = useState('')
   const [renaming, setRenaming] = useState(false)
@@ -193,6 +245,7 @@ function ItemCard({ item, bullets }) {
           ) : (
             <button onClick={() => setRenaming(true)} className="group/t flex items-center gap-1.5 text-left" title="Rename">
               <h3 className="text-[18px] font-bold text-ink">{item.title}</h3>
+              <ScorePill score={scores.byItem[item.id]} title="Average bullet score" />
               <Pencil size={13} className="text-muted opacity-0 group-hover/t:opacity-100" />
             </button>
           )}
@@ -209,7 +262,7 @@ function ItemCard({ item, bullets }) {
               {g.role} <span className="font-normal text-muted">{roleMeta(g.role) && range(roleMeta(g.role).start, roleMeta(g.role).end)}</span>
             </p>
           )}
-          <ul className="space-y-1.5">{g.list.map(b => <BulletRow key={b.id} item={item} b={b} />)}</ul>
+          <ul className="space-y-1.5">{g.list.map(b => <BulletRow key={b.id} item={item} b={b} result={scores.byBullet[b.id]} server={server} />)}</ul>
         </div>
       ))}
 
@@ -223,8 +276,9 @@ function ItemCard({ item, bullets }) {
   )
 }
 
-function BulletRow({ item, b }) {
+function BulletRow({ item, b, result, server }) {
   const { updateVaultBullet, deleteVaultBullet } = useStore()
+  const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(b.text)
   const [picking, setPicking] = useState(false)
@@ -252,6 +306,8 @@ function BulletRow({ item, b }) {
             </p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <ScorePill score={result?.score} open={open} onClick={result ? () => setOpen(v => !v) : null}
+              title={result ? (result.issues.length ? `${result.issues.length} issue${result.issues.length === 1 ? '' : 's'}: click for details` : 'No issues found') : undefined} />
             {b.tags.map(id => TAG_BY_ID[id] && (
               <button key={id} onClick={() => toggle(id)} title="Remove tag" className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: TAG_BY_ID[id].color }}>
                 {TAG_BY_ID[id].label}
@@ -277,12 +333,97 @@ function BulletRow({ item, b }) {
               {b.manual ? 'added in vault' : resumes ? `in ${resumes} resume${resumes === 1 ? '' : 's'}` : 'not in any resume now'}
             </span>
           </div>
+          {open && result && <BulletIssues item={item} b={b} result={result} server={server} />}
         </div>
         <button onClick={() => deleteVaultBullet(item.id, b.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-600 group-hover/b:opacity-100" title="Remove from vault">
           <Trash2 size={14} />
         </button>
       </div>
     </li>
+  )
+}
+
+const CHECK_TITLES = { metric: 'No measurable result', 'weak-verb': 'Weak opening', long: 'Long bullet', short: 'Very short bullet', tense: 'Present tense in a past role', 'first-person': 'First person', cliche: 'Cliché', spacing: 'Extra spaces' }
+const same = (a, b) => (a || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() === (b || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+// The Optimize issue list for one vault bullet: Fix / Suggest rewrite / Ignore. Changes apply to the vault only.
+function BulletIssues({ item, b, result, server }) {
+  const { updateVaultBullet, ignoreVaultIssue } = useStore()
+  const [rw, setRw] = useState({}) // check -> { status, after, reason, error }
+
+  const suggest = async issue => {
+    setRw(r => ({ ...r, [issue.check]: { status: 'loading' } }))
+    try {
+      const data = await post('/api/improve', { context: { title: b.role || item.title, targetRole: '' }, bullets: [{ ref: b.id, text: b.text, issue: issue.title }] })
+      const w = data.rewrites[0]
+      const fine = !w || w.verdict === 'already_fine' || same(w.after, b.text)
+      setRw(r => ({ ...r, [issue.check]: { status: fine ? 'fine' : 'ready', after: w?.after, reason: w?.reason, mock: data.mock } }))
+    } catch (e) {
+      setRw(r => ({ ...r, [issue.check]: { status: 'error', error: e.message } }))
+    }
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg bg-white p-3 ring-1 ring-slate-200">
+      {result.issues.length === 0 && <p className="text-[13px] text-emerald-700">No issues found. This bullet passes every check.</p>}
+      {result.issues.map(i => {
+        const r = rw[i.check]
+        return (
+          <div key={i.check} className="text-[13px]">
+            <div className="flex flex-wrap items-start gap-2">
+              <span className={clsx('mt-1.5 h-2 w-2 shrink-0 rounded-full', i.severity === 'medium' ? 'bg-amber-500' : i.severity === 'info' ? 'bg-slate-300' : 'bg-sky-500')} />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-ink">{i.title} <span className="font-normal text-muted">· {i.group === 'impact' ? 'Impact' : 'Clarity'}</span></p>
+                <p className="text-muted">{i.detail}</p>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                {i.fix && <MiniBtn icon={Check} primary onClick={() => updateVaultBullet(item.id, b.id, { text: autoFixText(i.fix, b.text) })}>Fix</MiniBtn>}
+                {i.ai && <MiniBtn icon={r?.status === 'loading' ? Loader2 : Wand2} spin={r?.status === 'loading'} disabled={server === false || r?.status === 'loading'}
+                  title={server === false ? 'AI server offline' : 'Ask AI for an honest rewrite'} onClick={() => suggest(i)}>Suggest rewrite</MiniBtn>}
+                <MiniBtn icon={EyeOff} onClick={() => ignoreVaultIssue(item.id, b.id, i.check)} title="Don’t count this against the bullet">Ignore</MiniBtn>
+              </div>
+            </div>
+            {r?.status === 'error' && <p className="ml-4 mt-1.5 text-red-600">{r.error}</p>}
+            {r?.status === 'fine' && (
+              <div className="ml-4 mt-1.5 flex flex-wrap items-center gap-2 rounded-md bg-emerald-50 p-2 text-emerald-800">
+                <span className="flex-1">AI review: this bullet is already fine{r.reason ? ` (${r.reason})` : '.'}</span>
+                <MiniBtn icon={EyeOff} onClick={() => ignoreVaultIssue(item.id, b.id, i.check)}>Ignore issue</MiniBtn>
+              </div>
+            )}
+            {r?.status === 'ready' && (
+              <div className="ml-4 mt-1.5 rounded-md bg-brand-soft/60 p-2">
+                <p className="text-ink">{r.after}</p>
+                {r.reason && <p className="mt-1 text-[12px] text-muted">{r.reason}{r.mock ? ' (demo mode)' : ''}</p>}
+                {/\[[A-Z]\]/.test(r.after) && <p className="mt-1 text-[12px] text-amber-700">Replace {r.after.match(/\[[A-Z]\]/)[0]} with your real number after using it.</p>}
+                <div className="mt-2 flex gap-1.5">
+                  <MiniBtn icon={Check} primary onClick={() => { updateVaultBullet(item.id, b.id, { text: r.after }); setRw(x => ({ ...x, [i.check]: undefined })) }}>Use this</MiniBtn>
+                  <MiniBtn icon={X} onClick={() => setRw(x => ({ ...x, [i.check]: undefined }))}>Dismiss</MiniBtn>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+      {(b.ignored?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2 text-[12px] text-muted">
+          Ignored:
+          {b.ignored.map(c => (
+            <button key={c} onClick={() => ignoreVaultIssue(item.id, b.id, c, false)} className="flex items-center gap-1 rounded-full bg-field px-2 py-0.5 hover:text-ink" title="Count this check again">
+              {CHECK_TITLES[c] ?? c} <RotateCcw size={10} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MiniBtn({ children, onClick, primary, disabled, title, icon: Icon, spin }) {
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className={clsx('flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40', primary ? 'bg-brand text-white hover:brightness-110' : 'bg-field text-ink hover:bg-slate-200')}>
+      {Icon && <Icon size={12} className={spin ? 'animate-spin' : undefined} />} {children}
+    </button>
   )
 }
 

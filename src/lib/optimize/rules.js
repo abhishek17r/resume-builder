@@ -84,25 +84,12 @@ export function analyzeQuality(resume, { pages = 1 } = {}) {
       for (const it of items) {
         bulletCount++
         const target = { sectionId: sec.id, entryId: e.id, bullet: it.i }
-        const n = words(it.text)
-        const first = it.text.split(/\s+/)[0]?.replace(/[^A-Za-z]/g, '').toLowerCase()
-        if (first) openers[first] = (openers[first] ?? 0) + 1
-
-        if (NUMBER.test(it.text)) quantified++
-        else add('impact', 'low', 'metric', 'No measurable result', 'Add a number: %, $, time saved, users, team size. Recruiters scan for results.', target, { text: it.text, ai: true })
-
-        if (WEAK_OPENERS.test(it.text)) add('impact', 'medium', 'weak-verb', `Weak opening: “${it.text.match(WEAK_OPENERS)[0]}”`, 'Start with a strong action verb that says what you did (Led, Built, Cut, Launched…).', target, { text: it.text, ai: true })
-        else strong++
-
-        if (n > 38) add('impact', 'low', 'long', `Long bullet (${n} words)`, 'Aim for 1–2 lines (about 15–30 words) so it can be skimmed.', target, { text: it.text, ai: true })
-        else if (n < 5) add('impact', 'low', 'short', 'Very short bullet', 'Say what you did and what changed as a result.', target, { text: it.text, ai: true })
-        else goodLength++
-
-        if (past && first && PRESENT_VERBS.has(first)) add('clarity', 'low', 'tense', 'Present tense in a past role', `Use past tense for roles you’ve left (“${first}” → “${pastOf(first)}”).`, target, { text: it.text, fix: 'tense' })
-        if (FIRST_PERSON.test(it.text)) add('clarity', 'low', 'first-person', 'First person (“I”, “my”)', 'Resumes are written without pronouns: start with the verb.', target, { text: it.text, fix: 'first-person' })
-        const cliche = CLICHES.find(c => it.text.toLowerCase().includes(c))
-        if (cliche) add('clarity', 'low', 'cliche', `Cliché: “${cliche}”`, 'Replace with a specific example that shows it.', target, { text: it.text, ai: true })
-        if (/ {2,}|\s+[,.;]/.test(it.text)) add('clarity', 'info', 'spacing', 'Extra spaces', 'Tidy up double spaces.', target, { fix: 'spacing' })
+        const c = bulletChecks(it.text, { past })
+        if (c.first) openers[c.first] = (openers[c.first] ?? 0) + 1
+        quantified += c.quantified
+        strong += c.strong
+        goodLength += c.goodLength
+        for (const i of c.issues) add(i.group, i.severity, i.check, i.title, i.detail, target, { text: it.text, ...(i.fix ? { fix: i.fix } : {}), ...(i.ai ? { ai: true } : {}) })
       }
     }
   }
@@ -141,6 +128,46 @@ export function analyzeQuality(resume, { pages = 1 } = {}) {
   }
 
   return score(issues, { bulletCount, quantified, strong, goodLength })
+}
+
+/**
+ * The per-bullet checks, shared by resume scoring (analyzeQuality) and the Vault.
+ * Returns the issues plus the three Impact signals (each 0 or 1) and the opening word.
+ */
+export function bulletChecks(text, { past = false } = {}) {
+  const issues = []
+  const add = (group, severity, check, title, detail, extra = {}) => issues.push({ group, severity, check, title, detail, ...extra })
+  const n = words(text)
+  const first = text.split(/\s+/)[0]?.replace(/[^A-Za-z]/g, '').toLowerCase() || ''
+  const quantified = NUMBER.test(text) ? 1 : 0
+  const weak = WEAK_OPENERS.test(text)
+  const lengthOk = n <= 38 && n >= 5
+
+  if (!quantified) add('impact', 'low', 'metric', 'No measurable result', 'Add a number: %, $, time saved, users, team size. Recruiters scan for results.', { ai: true })
+  if (weak) add('impact', 'medium', 'weak-verb', `Weak opening: “${text.match(WEAK_OPENERS)[0]}”`, 'Start with a strong action verb that says what you did (Led, Built, Cut, Launched…).', { ai: true })
+  if (n > 38) add('impact', 'low', 'long', `Long bullet (${n} words)`, 'Aim for 1–2 lines (about 15–30 words) so it can be skimmed.', { ai: true })
+  else if (n < 5) add('impact', 'low', 'short', 'Very short bullet', 'Say what you did and what changed as a result.', { ai: true })
+  if (past && first && PRESENT_VERBS.has(first)) add('clarity', 'low', 'tense', 'Present tense in a past role', `Use past tense for roles you’ve left (“${first}” → “${pastOf(first)}”).`, { fix: 'tense' })
+  if (FIRST_PERSON.test(text)) add('clarity', 'low', 'first-person', 'First person (“I”, “my”)', 'Resumes are written without pronouns: start with the verb.', { fix: 'first-person' })
+  const cliche = CLICHES.find(c => text.toLowerCase().includes(c))
+  if (cliche) add('clarity', 'low', 'cliche', `Cliché: “${cliche}”`, 'Replace with a specific example that shows it.', { ai: true })
+  if (/ {2,}|\s+[,.;]/.test(text)) add('clarity', 'info', 'spacing', 'Extra spaces', 'Tidy up double spaces.', { fix: 'spacing' })
+
+  return { issues, quantified, strong: weak ? 0 : 1, goodLength: lengthOk ? 1 : 0, first }
+}
+
+/**
+ * One bullet's 0-100 score, on the same basis as the resume's Impact group
+ * (50% measurable result, 30% strong opening, 20% length) minus 8 per open Clarity issue.
+ * `ignored` is a set of check names the user chose to ignore for this bullet.
+ */
+export function bulletScore(text, { past = false, ignored = new Set() } = {}) {
+  const c = bulletChecks(text, { past })
+  const open = c.issues.filter(i => !ignored.has(i.check))
+  const pass = check => ignored.has(check) ? 1 : 0
+  const impact = 50 * Math.max(c.quantified, pass('metric')) + 30 * Math.max(c.strong, pass('weak-verb')) + 20 * Math.max(c.goodLength, pass('long'), pass('short'))
+  const clarityPenalty = open.filter(i => i.group === 'clarity' && i.severity !== 'info').length * 8
+  return { score: Math.max(0, Math.min(100, Math.round(impact - clarityPenalty))), issues: open, checks: c }
 }
 
 function score(issues, stats) {

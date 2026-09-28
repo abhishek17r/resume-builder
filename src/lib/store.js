@@ -244,6 +244,13 @@ export const useStore = create(
           set(state => ({ vault: { ...state.vault, items: [...state.vault.items, { id, key: `${kind}:manual:${id}`, kind, title, subtitle, roles: [], start: '', end: '', location: '', bullets: [], manual: true, createdAt: Date.now() }] } }))
           return id
         },
+        // Per-bullet ignored checks (same idea as Optimize's "Ignore issue"), stored on the vault bullet.
+        ignoreVaultIssue: (itemId, bulletId, check, ignored = true) => set(state => ({ vault: mapBullet(state.vault, itemId, bulletId, b => {
+          const list = new Set(b.ignored ?? [])
+          if (ignored) list.add(check)
+          else list.delete(check)
+          return { ...b, ignored: [...list] }
+        }) })),
         updateVaultItem: (itemId, patch) => set(state => ({ vault: { ...state.vault, items: state.vault.items.map(it => (it.id === itemId ? { ...it, ...patch } : it)) } })),
         deleteVaultItem: itemId => set(state => {
           const item = state.vault.items.find(i => i.id === itemId)

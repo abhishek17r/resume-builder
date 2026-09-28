@@ -36,7 +36,7 @@ export default function OptimizePanel({ onShow }) {
 
 /* ============================== shared ============================== */
 
-function Ring({ value, size = 96, label }) {
+export function Ring({ value, size = 96, label }) {
   const r = size / 2 - 7
   const c = 2 * Math.PI * r
   const color = value >= 80 ? '#16a34a' : value >= 60 ? '#d97706' : '#dc2626'
