@@ -14,7 +14,7 @@ import { LinkedInIcon } from './BrandIcons'
 export function Mark({ size = 28 }) {
   return (
     <span className="grid shrink-0 place-items-center rounded-[7px] bg-ink text-canvas" style={{ width: size, height: size }}>
-      <span className="display leading-none" style={{ fontSize: size * 0.72, marginTop: size * 0.06 }}>r</span>
+      <span className="display leading-none" style={{ fontSize: size * 0.78, marginTop: -size * 0.04 }}>o</span>
     </span>
   )
 }

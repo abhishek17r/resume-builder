@@ -1,7 +1,9 @@
 // Product name and copy in one place, so renaming the app is a one-line change.
-export const APP_NAME = 'Resume Workbench'
-export const APP_TAGLINE = 'A local workbench for resumes that get interviews.'
+export const APP_NAME = 'Offerstack'
+export const APP_TAGLINE = 'The open-source, local-first stack for landing the offer.'
 export const REPOS = {
   app: 'https://github.com/abhishek17r/resume-builder',
   api: 'https://github.com/abhishek17r/resume-builder-api',
 }
+// One line to install and start everything (see install.sh).
+export const INSTALL_CMD = 'curl -fsSL https://raw.githubusercontent.com/abhishek17r/resume-builder/main/install.sh | sh'
