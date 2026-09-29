@@ -39,7 +39,7 @@ export default function AddContentModal({ onClose, onAdded }) {
             const has = present.has(type) && type !== 'custom'
             return (
               <button key={type} onClick={() => pick(type)}
-                className="group flex flex-col items-start gap-2 rounded-xl border border-slate-200 p-4 text-left transition hover:border-brand hover:bg-brand-soft">
+                className="group flex flex-col items-start gap-2 rounded-lg border border-slate-200 p-4 text-left transition hover:border-brand hover:bg-brand-soft">
                 <div className="flex w-full items-center gap-2">
                   <Icon size={22} className="text-ink group-hover:text-brand" />
                   <span className="font-bold text-ink">{def.label}</span>

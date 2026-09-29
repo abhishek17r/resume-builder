@@ -140,26 +140,26 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-0">
-      <button onClick={onCancel} className="mb-5 flex items-center gap-1.5 text-[14px] font-medium text-muted hover:text-ink">
-        <ArrowLeft size={16} /> Back
+    <div className="mx-auto max-w-6xl px-6 py-10">
+      <button onClick={onCancel} className="mb-4 flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
+        <ArrowLeft size={14} /> Back
       </button>
-      <h1 className="mb-6 text-[30px] font-extrabold text-ink">New resume</h1>
+      <h1 className="display mb-8 border-b border-rule pb-6 text-[40px] leading-none text-ink">New resume</h1>
 
       <div className="flex flex-col gap-6 md:flex-row">
         {/* page nav */}
-        <nav className="md:sticky md:top-28 md:h-fit md:w-60 md:shrink-0">
-          <div className="flex gap-2 overflow-x-auto md:flex-col md:gap-5 md:overflow-visible">
+        <nav className="md:sticky md:top-8 md:h-fit md:w-56 md:shrink-0">
+          <div className="flex gap-2 overflow-x-auto md:flex-col md:gap-6 md:overflow-visible">
             {NAV.map(g => (
               <div key={g.group} className="flex gap-1 md:flex-col">
-                <p className="hidden px-3 pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted md:block">{g.group}</p>
+                <p className="meta hidden px-3 pb-1.5 uppercase tracking-[0.08em] text-muted md:block">{g.group}</p>
                 {g.items.map(it => (
                   <button key={it.id} onClick={() => setTab(it.id)}
-                    className={clsx('flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] transition',
-                      tab === it.id ? 'bg-white font-semibold text-brand shadow-sm ring-1 ring-brand/20' : 'text-ink hover:bg-white/70')}>
-                    <it.icon size={18} className={tab === it.id ? 'text-brand' : 'text-muted'} />
+                    className={clsx('flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-[14px] transition',
+                      tab === it.id ? 'bg-white font-medium text-ink ring-1 ring-rule' : 'text-body hover:bg-white/60 hover:text-ink')}>
+                    <it.icon size={16} className={tab === it.id ? 'text-brand' : 'text-muted'} />
                     <span className="whitespace-nowrap">{it.label}</span>
-                    <ChevronRight size={15} className={clsx('ml-auto hidden md:block', tab === it.id ? 'text-brand' : 'text-transparent')} />
+                    <ChevronRight size={14} className={clsx('ml-auto hidden md:block', tab === it.id ? 'text-ink' : 'text-transparent')} />
                   </button>
                 ))}
               </div>
@@ -181,7 +181,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
               {resumes.length ? (
                 <div className="mt-5 max-h-80 space-y-1.5 overflow-auto pr-1">
                   {[...resumes].sort((a, b) => b.updatedAt - a.updatedAt).map(r => (
-                    <label key={r.id} className={clsx('flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 transition',
+                    <label key={r.id} className={clsx('flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 transition',
                       copyId === r.id ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-slate-300')}>
                       <input type="radio" name="copy" className="accent-[var(--color-brand)]" checked={copyId === r.id} onChange={() => setCopyId(r.id)} />
                       <span className="min-w-0 flex-1">
@@ -237,9 +237,9 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3">
-            <button type="button" onClick={onCancel} className="rounded-xl px-5 py-3 font-semibold text-muted hover:bg-field hover:text-ink">Cancel</button>
+            <button type="button" onClick={onCancel} className="rounded-md px-5 py-2.5 font-medium text-muted hover:bg-field hover:text-ink">Cancel</button>
             <button type="submit" disabled={!canCreate}
-              className="cta rounded-xl px-8 py-3 text-[16px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100">
+              className="rounded-md bg-ink px-7 py-2.5 text-[15px] font-medium text-white transition hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-40">
               {tab === 'job' ? (jd.status === 'running' ? 'Building…' : 'Build from vault') : importing ? 'Create from import' : tab === 'copy' ? 'Create copy' : 'Create resume'}
             </button>
           </div>
@@ -279,7 +279,7 @@ function FromJob({ jd, setJd }) {
         </div>
       </div>
       {jd.steps.length > 0 && (
-        <ol className="mt-5 space-y-2 rounded-xl bg-soft p-4 text-[14px]">
+        <ol className="mt-5 space-y-2 rounded-lg bg-soft p-4 text-[14px]">
           {jd.steps.map(s => (
             <li key={s.id} className="flex items-center gap-2">
               {s.status === 'running' ? <Loader2 size={16} className="animate-spin text-brand" /> : s.status === 'done' ? <CheckCircle2 size={16} className="text-emerald-600" /> : s.status === 'error' ? <AlertCircle size={16} className="text-red-600" /> : <Circle size={16} className="text-muted" />}
@@ -297,7 +297,7 @@ function FromJob({ jd, setJd }) {
 function Intro({ title, text }) {
   return (
     <>
-      <h2 className="text-[22px] font-bold text-ink">{title}</h2>
+      <h2 className="display text-[30px] leading-tight text-ink">{title}</h2>
       <p className="mt-1.5 text-muted">{text}</p>
     </>
   )
@@ -305,7 +305,7 @@ function Intro({ title, text }) {
 
 function HowTo({ icon: Icon, title, badge, children }) {
   return (
-    <div className="rounded-xl bg-soft p-4">
+    <div className="rounded-lg bg-soft p-4">
       <div className="mb-2 flex items-center gap-2">
         <Icon size={17} className="text-ink" />
         <span className="font-semibold text-ink">{title}</span>
@@ -326,7 +326,7 @@ function DropZone({ imp, onFile, accept, hint }) {
         onDragOver={e => { e.preventDefault(); setOver(true) }}
         onDragLeave={() => setOver(false)}
         onDrop={e => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]) }}
-        className={clsx('flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition',
+        className={clsx('flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-7 text-center transition',
           over ? 'border-brand bg-brand-soft' : 'border-slate-300 hover:border-brand hover:bg-soft')}
       >
         {imp.status === 'reading' ? (
@@ -402,7 +402,7 @@ function ImportSummary({ imp, keep, setKeep }) {
 
 function Layer({ icon: Icon, title, status, toggle, onToggle, children }) {
   return (
-    <div className="rounded-xl bg-soft p-3.5">
+    <div className="rounded-lg bg-soft p-3.5">
       <div className="mb-1.5 flex items-center gap-2">
         <Icon size={16} className="text-ink" />
         <span className="font-semibold text-ink">{title}</span>

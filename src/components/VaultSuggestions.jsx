@@ -103,7 +103,7 @@ export default function VaultSuggestions({ mode, onShow, serverDown }) {
       ) : (
         <div className="space-y-2.5">
           {shown.map(c => (
-            <div key={c.id} className="rounded-xl bg-soft p-3.5">
+            <div key={c.id} className="rounded-lg bg-soft p-3.5">
               <div className="mb-1.5 flex items-center gap-2 text-[12px] text-muted">
                 <span className="min-w-0 flex-1 truncate font-medium">{c.entryLabel} <span className="font-normal">· {c.bulletCount} bullet{c.bulletCount === 1 ? '' : 's'} now</span></span>
                 <span className={clsx('rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums', scoreBg(c.score))} title="Vault bullet score">{c.score}</span>

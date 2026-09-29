@@ -64,15 +64,15 @@ export default function CustomizePanel() {
       <nav className="sticky top-0 hidden h-fit w-28 shrink-0 flex-col lg:flex">
         {NAV.map(([id, label]) => (
           <button key={id} onClick={() => go(id)}
-            className={clsx('border-l-2 py-2 pl-3 text-left text-[15px] transition',
-              active === id ? 'border-brand font-semibold text-brand' : 'border-slate-200 text-muted hover:text-ink')}>
+            className={clsx('border-l py-1.5 pl-3 text-left text-[14px] transition',
+              active === id ? 'border-ink font-medium text-ink' : 'border-rule text-muted hover:text-ink')}>
             {label}
           </button>
         ))}
       </nav>
 
       <div className="min-w-0 flex-1 space-y-6">
-        <Card id="c-document" title="Document Settings">
+        <Card id="c-document" title="Document">
           <Field label="Language">
             <Select value={s.language ?? 'en'} options={Object.entries(LANGUAGES).map(([value, l]) => ({ value, label: l.label }))} onChange={v => set('language', v)} />
             <p className="mt-2 text-[13px] text-muted">Used for month names and “{(LANGUAGES[s.language] ?? LANGUAGES.en).present}” in dates.</p>
@@ -85,7 +85,7 @@ export default function CustomizePanel() {
           </Field>
         </Card>
 
-        <Card id="c-templates" title="Design Templates">
+        <Card id="c-templates" title="Templates">
           <p className="-mt-3 text-muted">Apply a complete look in one click. Your content stays the same.</p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
             {TEMPLATES.map(t => <TemplateCard key={t.id} resume={r} template={t} active={s.templateId === t.id} onApply={tpl => applyTemplate(tpl, KEEP_ON_TEMPLATE)} />)}
@@ -378,7 +378,7 @@ function SectionLayout({ sections, columns, onMove, onColumn }) {
 
 /* ---------------- tile artwork ---------------- */
 
-const tone = a => (a ? '#4f46e5' : '#c4c4cc')
+const tone = a => (a ? '#17171b' : '#cdc8bc')
 
 function ColArt({ a, kind }) {
   const c = tone(a)
@@ -402,7 +402,7 @@ function ColArt({ a, kind }) {
 }
 
 function HeaderArt({ a, pos }) {
-  const strong = a ? '#4f46e5' : '#b8b8c0'
+  const strong = a ? '#17171b' : '#bdb7aa'
   const light = a ? '#e0e3ff' : '#fff'
   if (pos === 'top') return <div className="flex h-full w-full flex-col"><div className="h-1/2" style={{ background: strong }} /><div className="flex-1" style={{ background: light }} /></div>
   return (

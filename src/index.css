@@ -1,26 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "DM Sans", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
-  --color-canvas: #f3f1ec;
-  --color-ink: #1d1530;
-  --color-body: #424242;
-  --color-muted: #6b6b76;
-  --color-field: #f3f4f6;
-  --color-soft: #f7f8f9;
-  --color-brand: #4f46e5;
-  --color-brand-soft: #eef0ff;
-  --color-cta-from: #6d4aff;
-  --color-cta-to: #2f80ed;
+  --font-sans: "Geist", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Paper, ink and one green: flat surfaces with hairline rules instead of floating cards. */
+  --color-canvas: #f4f1ea;
+  --color-paper: #fbfaf6;
+  --color-rule: #e3ded2;
+  --color-ink: #17171b;
+  --color-body: #3b3a40;
+  --color-muted: #75726c;
+  --color-field: #f1eee6;
+  --color-soft: #f6f3ec;
+  --color-brand: #1f6a4f;
+  --color-brand-soft: #e5efe9;
+  --color-cta-from: #17171b;
+  --color-cta-to: #17171b;
 }
 
 html, body { background: var(--color-canvas); color: var(--color-body); font-size: 15px; }
-body { -webkit-font-smoothing: antialiased; }
+body { -webkit-font-smoothing: antialiased; font-feature-settings: "ss01", "cv11"; }
+::selection { background: #cfe3d8; }
 
-.card { background: #fff; border-radius: 16px; box-shadow: 2px 1px 7px rgba(0,0,0,.05); }
-.cta { background-image: linear-gradient(90deg, var(--color-cta-from), var(--color-cta-to)); }
-.field { @apply w-full rounded-lg bg-field px-3 py-2.5 text-[15px] text-ink outline-none ring-brand/40 transition focus:bg-white focus:ring-2; }
-.label { @apply mb-1.5 block text-[14px] font-semibold text-ink; }
+.card { background: #fff; border: 1px solid var(--color-rule); border-radius: 10px; }
+.cta { background: var(--color-ink); }
+.cta:hover { background: #2a2a31; }
+.field { @apply w-full rounded-md border border-rule bg-white px-3 py-2.5 text-[15px] text-ink outline-none ring-brand/30 transition focus:border-brand focus:ring-2; }
+.label { @apply mb-1.5 block text-[13px] font-semibold uppercase tracking-[0.06em] text-muted; }
+.display { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+.meta { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 /* Editor and preview panes scroll on their own; keep their scrollbars quiet. */
 .pane-scroll { scrollbar-width: thin; scrollbar-color: rgb(0 0 0 / .15) transparent; overscroll-behavior: contain; }

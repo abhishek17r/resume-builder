@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import {
-  ChevronDown, GripVertical, Eye, EyeOff, Trash2, Plus, Check, Pencil, SquarePen,
-  Mail, Phone, MapPin, Camera, X,
+  ChevronDown, GripVertical, Eye, EyeOff, Trash2, Plus, Check, Pencil,
+  Camera, X,
 } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
 import { SECTION_TYPES, LEVELS } from '../lib/sections'
@@ -12,6 +12,7 @@ import RichText from './RichText'
 import AddContentModal from './AddContentModal'
 import { analyzeQuality } from '../lib/optimize/rules'
 import VaultPicker from './VaultPicker'
+import { formatRange } from '../lib/format'
 
 // Open quality issues per entry, for the markers in the editor (same checks as Optimize).
 function useEntryIssues(resume) {
@@ -70,11 +71,11 @@ export default function ContentPanel() {
   const ids = resume.sections.map(s => s.id)
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-4 pb-24">
       <PersonalCard onEdit={() => setEditing({ kind: 'personal' })} />
 
       <SortableList ids={ids} onMove={moveSection}>
-        <div className="space-y-5">
+        <div className="space-y-4">
           {resume.sections.map(section => (
             <SortableItem key={section.id} id={section.id}>
               {({ handleProps }) => (
@@ -92,11 +93,9 @@ export default function ContentPanel() {
         </div>
       </SortableList>
 
-      <div className="flex justify-center pt-4">
-        <button onClick={() => setAdding(true)} className="cta flex items-center gap-3 rounded-xl px-10 py-4 text-[18px] font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-110">
-          <Plus size={22} strokeWidth={2.6} /> Add Content
-        </button>
-      </div>
+      <button onClick={() => setAdding(true)} className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-ink/25 py-4 text-[14px] font-medium text-body transition hover:border-ink/50 hover:bg-white hover:text-ink">
+        <Plus size={16} /> Add a section
+      </button>
 
       {adding && (
         <AddContentModal
@@ -116,33 +115,18 @@ export default function ContentPanel() {
 
 function PersonalCard({ onEdit }) {
   const p = useResume().personal
-  const rows = [
-    p.email && [Mail, p.email],
-    p.phone && [Phone, p.phone],
-    p.location && [MapPin, p.location],
-  ].filter(Boolean)
+  const contact = [p.email, p.phone, p.location].filter(Boolean)
   return (
-    <div className="card relative cursor-pointer p-8 transition hover:shadow-md" onClick={onEdit}>
-      <button onClick={e => { e.stopPropagation(); onEdit() }} className="cta absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-white" title="Edit personal details">
-        <SquarePen size={17} />
-      </button>
-      <div className="flex gap-6">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[22px] font-bold text-ink">{p.fullName || 'Your name'}</h2>
-          <p className="mt-1 text-[19px] leading-snug text-muted">{p.jobTitle || 'Job title'}</p>
-          <div className="mt-5 space-y-3">
-            {rows.map(([Icon, text]) => (
-              <div key={text} className="flex items-center gap-3 text-[16px] text-ink">
-                <Icon size={20} strokeWidth={1.8} /> <span className="truncate">{text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="grid h-28 w-28 shrink-0 self-center place-items-center overflow-hidden rounded-full bg-field text-slate-300">
-          {p.photo ? <img src={p.photo} alt="" className="h-full w-full object-cover" /> : <Camera size={40} />}
-        </div>
+    <button onClick={onEdit} className="card group flex w-full items-center gap-5 p-6 text-left transition hover:border-ink/30">
+      <div className="min-w-0 flex-1">
+        <p className="meta uppercase tracking-[0.08em] text-muted">Header</p>
+        <h2 className="display mt-1 truncate text-[32px] leading-tight text-ink">{p.fullName || <span className="text-muted">Your name</span>}</h2>
+        <p className="truncate text-[15px] text-body">{p.jobTitle || <span className="text-muted">Professional title</span>}</p>
+        {contact.length > 0 && <p className="meta mt-3 truncate text-muted">{contact.join('  ·  ')}</p>}
       </div>
-    </div>
+      {p.photo && <img src={p.photo} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover ring-1 ring-rule" />}
+      <span className="flex shrink-0 items-center gap-1.5 self-start rounded-md border border-rule px-2.5 py-1 text-[13px] text-body group-hover:border-ink/40 group-hover:text-ink"><Pencil size={13} /> Edit</span>
+    </button>
   )
 }
 
@@ -176,14 +160,14 @@ function PersonalEditor({ onDone }) {
 
   return (
     <div className="space-y-5 pb-24">
-      <div className="card p-8">
-        <h2 className="mb-6 text-[24px] font-bold text-ink">Edit Personal Details</h2>
+      <div className="card p-7">
+        <h2 className="display mb-6 text-[30px] leading-none text-ink">Header</h2>
         <div className="mb-6 flex items-center gap-5">
-          <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-field text-slate-300">
+          <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-md border border-rule bg-field text-slate-300">
             {p.photo ? <img src={p.photo} alt="" className="h-full w-full object-cover" /> : <Camera size={34} />}
           </div>
           <div className="flex gap-2">
-            <label className="cursor-pointer rounded-lg bg-field px-4 py-2 text-[14px] font-semibold text-ink hover:bg-slate-200">
+            <label className="cursor-pointer rounded-md border border-rule bg-white px-4 py-2 text-[14px] font-medium text-ink hover:border-ink/40">
               {p.photo ? 'Change photo' : 'Upload photo'}
               <input type="file" accept="image/*" className="hidden" onChange={onPhoto} />
             </label>
@@ -217,10 +201,10 @@ function PersonalEditor({ onDone }) {
           })}
         </div>
 
-        <p className="mb-3 mt-7 text-[14px] font-semibold text-ink">Add details</p>
+        <p className="label mb-3 mt-7">Add details</p>
         <div className="flex flex-wrap gap-2">
           {Object.entries(LINK_TYPES).map(([type, T]) => (
-            <button key={type} onClick={() => addLink(type)} className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-[14px] font-medium text-ink hover:border-brand hover:text-brand">
+            <button key={type} onClick={() => addLink(type)} className="flex items-center gap-1.5 rounded-md border border-rule bg-white px-3 py-1.5 text-[13px] font-medium text-ink hover:border-ink/40">
               <Plus size={15} /> {T.label}
             </button>
           ))}
@@ -244,15 +228,14 @@ function SectionCard({ section, open, onToggle, handleProps, onEditEntry, issues
 
   return (
     <div id={`section-${section.id}`} className={clsx('card group/section scroll-mt-4', section.hidden && 'opacity-60')}>
-      <div className="relative flex cursor-pointer items-center gap-4 px-7 py-7" onClick={onToggle}>
-        <button {...handleProps} onClick={e => e.stopPropagation()} className="absolute -left-1 top-1/2 hidden -translate-y-1/2 cursor-grab touch-none rounded p-1 text-slate-300 hover:text-slate-500 group-hover/section:block" title="Drag to reorder">
-          <GripVertical size={18} />
+      <div className="relative flex cursor-pointer items-center gap-3 px-5 py-4" onClick={onToggle}>
+        <button {...handleProps} onClick={e => e.stopPropagation()} className="-ml-2 cursor-grab touch-none rounded p-1 text-transparent group-hover/section:text-slate-400 hover:!text-slate-600" title="Drag to reorder">
+          <GripVertical size={16} />
         </button>
-        <Icon size={26} className="shrink-0 text-ink" strokeWidth={2} />
         {renaming ? (
           <input
             autoFocus
-            className="field max-w-xs py-1.5 text-[20px] font-extrabold"
+            className="field max-w-xs py-1 text-[18px]"
             value={section.heading}
             onClick={e => e.stopPropagation()}
             onChange={e => renameSection(section.id, e.target.value)}
@@ -260,59 +243,56 @@ function SectionCard({ section, open, onToggle, handleProps, onEditEntry, issues
             onKeyDown={e => e.key === 'Enter' && setRenaming(false)}
           />
         ) : (
-          <h3 className="truncate text-[21px] font-extrabold text-ink">{section.heading}</h3>
+          <h3 className="display truncate text-[24px] leading-none text-ink">{section.heading}</h3>
         )}
-        {open && !renaming && (
-          <button onClick={e => { e.stopPropagation(); setRenaming(true) }} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-field px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-slate-200">
-            <Pencil size={13} /> Edit Heading
-          </button>
-        )}
-        <div className="ml-auto flex items-center gap-1">
-          {open && (
-            <>
-              <IconBtn title={section.hidden ? 'Show on resume' : 'Hide from resume'} onClick={e => { e.stopPropagation(); toggleSectionHidden(section.id) }}>
-                {section.hidden ? <EyeOff size={17} /> : <Eye size={17} />}
-              </IconBtn>
-              <IconBtn title="Delete section" danger onClick={e => {
-                e.stopPropagation()
-                if (confirm(`Delete the "${section.heading}" section?`)) removeSection(section.id)
-              }}>
-                <Trash2 size={17} />
-              </IconBtn>
-            </>
-          )}
-          <ChevronDown size={20} className={clsx('text-ink transition', open && 'rotate-180')} />
+        {!single && <span className="meta shrink-0 text-muted">{section.entries.length}</span>}
+        {section.hidden && <span className="meta shrink-0 rounded-sm bg-field px-1.5 py-0.5 text-muted">hidden</span>}
+        <div className="ml-auto flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 opacity-0 transition group-hover/section:opacity-100">
+            <IconBtn title="Rename section" onClick={e => { e.stopPropagation(); setRenaming(true) }}><Pencil size={15} /></IconBtn>
+            <IconBtn title={section.hidden ? 'Show on resume' : 'Hide from resume'} onClick={e => { e.stopPropagation(); toggleSectionHidden(section.id) }}>
+              {section.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+            </IconBtn>
+            <IconBtn title="Delete section" danger onClick={e => {
+              e.stopPropagation()
+              if (confirm(`Delete the "${section.heading}" section?`)) removeSection(section.id)
+            }}>
+              <Trash2 size={15} />
+            </IconBtn>
+          </div>
+          <ChevronDown size={18} className={clsx('ml-1 text-muted transition', open && 'rotate-180')} />
         </div>
       </div>
 
       {open && single && (
-        <div className="space-y-4 px-7 pb-7">
+        <div className="space-y-4 border-t border-rule px-5 py-5">
           <SingleEditor section={section} />
         </div>
       )}
 
       {open && !single && (
-        <div className="pb-5">
+        <div className="border-t border-rule">
           <SortableList ids={section.entries.map(e => e.id)} onMove={(a, b) => moveEntry(section.id, a, b)}>
             {section.entries.map(entry => {
               const [title, sub] = def.title(entry)
               return (
                 <SortableItem key={entry.id} id={entry.id}>
                   {({ handleProps: h }) => (
-                    <div className="group/entry mx-4 flex items-center gap-2 rounded-xl px-3 py-3 hover:bg-soft">
-                      <button {...h} className="cursor-grab touch-none text-slate-400 hover:text-slate-600" title="Drag to reorder">
-                        <GripVertical size={18} />
+                    <div className="group/entry flex items-center gap-2 border-b border-rule/70 px-5 py-3 last:border-b-0 hover:bg-soft">
+                      <button {...h} className="-ml-2 cursor-grab touch-none text-transparent group-hover/entry:text-slate-400 hover:!text-slate-600" title="Drag to reorder">
+                        <GripVertical size={15} />
                       </button>
-                      <button onClick={() => onEditEntry(entry.id)} className={clsx('min-w-0 flex-1 truncate text-left text-[15px] text-ink', entry.hidden && 'opacity-50')}>
+                      <button onClick={() => onEditEntry(entry.id)} className={clsx('min-w-0 flex-1 text-left', entry.hidden && 'opacity-50')}>
                         {title || sub ? (
-                          <>
-                            <span className="font-bold">{title}</span>
-                            {sub && <span>{title ? ', ' : ''}{sub}</span>}
-                          </>
+                          <span className="block truncate text-[15px]">
+                            <span className="font-medium text-ink">{title}</span>
+                            {sub && <span className="text-muted">{title ? ' · ' : ''}{sub}</span>}
+                          </span>
                         ) : (
                           <span className="italic text-muted">Untitled entry</span>
                         )}
                       </button>
+                      {(entry.startDate || entry.endDate) && <span className="meta shrink-0 text-muted">{formatRange(entry.startDate, entry.endDate, 'MM/YYYY', { hasStart: 'startDate' in entry })}</span>}
                       {issuesByEntry[entry.id]?.length > 0 && (
                         <button onClick={() => onEditEntry(entry.id)} title={`${issuesByEntry[entry.id].length} suggestion${issuesByEntry[entry.id].length === 1 ? '' : 's'} from Optimize`}
                           className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[12px] font-semibold text-amber-700 hover:bg-amber-100">
@@ -328,11 +308,9 @@ function SectionCard({ section, open, onToggle, handleProps, onEditEntry, issues
               )
             })}
           </SortableList>
-          <div className="mt-3 flex justify-center">
-            <button onClick={() => onEditEntry(addEntry(section.id))} className="flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2 text-[15px] font-semibold text-ink hover:border-brand hover:text-brand">
-              <Plus size={17} /> Entry
-            </button>
-          </div>
+          <button onClick={() => onEditEntry(addEntry(section.id))} className="flex w-full items-center gap-2 border-t border-rule px-5 py-3 text-[14px] text-muted transition hover:bg-soft hover:text-ink">
+            <Plus size={15} /> Add entry
+          </button>
         </div>
       )}
     </div>
@@ -352,7 +330,7 @@ function SingleEditor({ section }) {
 function EntryIssues({ issues, focusBullet, onFix }) {
   const sorted = [...issues].sort((a, b) => (a.target.bullet === focusBullet ? -1 : 0) - (b.target.bullet === focusBullet ? -1 : 0))
   return (
-    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+    <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
       <p className="mb-2 text-[13px] font-semibold text-amber-800">{issues.length} suggestion{issues.length === 1 ? '' : 's'} from Optimize</p>
       <ul className="space-y-1.5">
         {sorted.map(i => (
@@ -377,10 +355,12 @@ function EntryEditor({ section, entry, issues = [], focusBullet, onDone }) {
   const { setEntry, removeEntry, toggleEntryHidden, applyEdit } = useStore()
   return (
     <div className="space-y-5 pb-24">
-      <div className="card p-8">
+      <div className="card p-7">
         <div className="mb-6 flex items-center gap-2">
-          <h2 className="text-[24px] font-bold text-ink">Edit Entry</h2>
-          <span className="ml-2 rounded-full bg-field px-3 py-1 text-[12px] font-medium text-muted">{section.heading}</span>
+          <div>
+            <p className="meta uppercase tracking-[0.08em] text-muted">{section.heading}</p>
+            <h2 className="display text-[30px] leading-tight text-ink">{SECTION_TYPES[section.type].title(entry).filter(Boolean)[0] || 'New entry'}</h2>
+          </div>
           <div className="ml-auto flex gap-1">
             <IconBtn title={entry.hidden ? 'Show on resume' : 'Hide from resume'} onClick={() => toggleEntryHidden(section.id, entry.id)}>
               {entry.hidden ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -503,9 +483,9 @@ const LinkMini = () => (
 
 function DoneBar({ onDone }) {
   return (
-    <div className="card sticky bottom-4 flex justify-center p-6">
-      <button onClick={onDone} className="cta flex w-full max-w-xs items-center justify-center gap-3 rounded-xl py-4 text-[18px] font-semibold text-white shadow-lg shadow-indigo-500/20 hover:brightness-110">
-        <Check size={20} strokeWidth={2.6} /> Done
+    <div className="sticky bottom-4 flex justify-end">
+      <button onClick={onDone} className="flex items-center gap-2 rounded-md bg-ink px-6 py-2.5 text-[15px] font-medium text-white shadow-[0_12px_28px_-14px_rgba(23,23,27,.6)] hover:bg-ink/85">
+        <Check size={17} /> Done
       </button>
     </div>
   )
@@ -513,7 +493,7 @@ function DoneBar({ onDone }) {
 
 function IconBtn({ children, danger, ...p }) {
   return (
-    <button {...p} className={clsx('grid h-9 w-9 place-items-center rounded-lg text-slate-600 transition', danger ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-field hover:text-ink')}>
+    <button {...p} className={clsx('grid h-8 w-8 place-items-center rounded-md text-muted transition', danger ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-field hover:text-ink')}>
       {children}
     </button>
   )

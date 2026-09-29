@@ -81,27 +81,27 @@ export default function VaultPage() {
   const byRules = allBullets.filter(({ b }) => b.tagSource === 'rules').length
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-0">
-      <div className="mb-6 flex flex-wrap items-end gap-4">
+    <div className="mx-auto max-w-6xl px-6 py-10 pb-24">
+      <div className="mb-6 flex flex-wrap items-end gap-4 border-b border-rule pb-6">
         <div>
-          <h1 className="mb-1 text-[30px] font-extrabold text-ink">Vault</h1>
-          <p className="text-muted">
-            Everything from all your resumes, in one place: {items.length} entries · {allBullets.length} bullets. Updates automatically; edit freely.
+          <h1 className="display text-[40px] leading-none text-ink">Vault</h1>
+          <p className="mt-2 text-muted">
+            Your career, deduplicated across every resume: <span className="meta text-ink">{items.length}</span> entries · <span className="meta text-ink">{allBullets.length}</span> bullets. Updates as you edit resumes.
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg bg-white p-1 ring-1 ring-slate-200">
-            {[['list', LayoutList, 'List'], ['matrix', Grid3x3, 'Matrix']].map(([id, Icon, label]) => (
-              <button key={id} onClick={() => setView(id)} className={clsx('flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[14px] font-medium', view === id ? 'bg-brand-soft text-brand' : 'text-muted hover:text-ink')}>
+          <div className="flex overflow-hidden rounded-md border border-rule bg-white">
+            {[['list', LayoutList, 'List'], ['matrix', Grid3x3, 'Matrix']].map(([id, Icon, label], i) => (
+              <button key={id} onClick={() => setView(id)} className={clsx('flex items-center gap-1.5 px-3 py-2 text-[14px]', i > 0 && 'border-l border-rule', view === id ? 'bg-ink text-white' : 'text-body hover:bg-field hover:text-ink')}>
                 <Icon size={15} /> {label}
               </button>
             ))}
           </div>
-          <button onClick={syncVault} className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-[14px] font-semibold text-ink ring-1 ring-slate-200 hover:ring-slate-400" title="Pull in anything new from your resumes">
+          <button onClick={syncVault} className="flex items-center gap-2 rounded-md border border-rule bg-white px-4 py-2 text-[14px] font-medium text-ink hover:border-ink/40" title="Pull in anything new from your resumes">
             <RefreshCw size={15} /> Sync
           </button>
           <button onClick={() => aiTag(true)} disabled={tagging.status === 'loading' || server === false || !byRules}
-            className="cta flex items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-semibold text-white hover:brightness-110 disabled:opacity-40"
+            className="flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-[14px] font-medium text-white hover:bg-ink/85 disabled:opacity-40"
             title={server === false ? 'AI server offline' : 'Refine keyword tags with AI (your own tags are never changed)'}>
             {tagging.status === 'loading' ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
             {tagging.status === 'loading' ? `Tagging ${tagging.done}/${tagging.total}…` : `AI tag ${byRules} bullets`}

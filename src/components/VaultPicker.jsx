@@ -34,7 +34,7 @@ export default function VaultPicker({ section, entry }) {
   const add = b => setEntry(section.id, entry.id, richKey, appendBullet(entry[richKey], b.html || b.text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))))
 
   return (
-    <div className="mt-5 rounded-xl border border-slate-200">
+    <div className="mt-5 rounded-lg border border-slate-200">
       <button onClick={() => setOpen(v => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left">
         <Archive size={16} className="text-brand" />
         <span className="flex-1 text-[14px] font-semibold text-ink">Insert from vault</span>
@@ -72,7 +72,7 @@ export default function VaultPicker({ section, entry }) {
                     </div>
                     {inHere
                       ? <span className="flex shrink-0 items-center gap-1 text-[12px] text-emerald-700"><Check size={13} /> In entry</span>
-                      : <button onClick={() => add(b)} className="flex shrink-0 items-center gap-1 rounded-md bg-brand-soft px-2 py-1 text-[12px] font-semibold text-brand hover:bg-indigo-100"><Plus size={13} /> Add</button>}
+                      : <button onClick={() => add(b)} className="flex shrink-0 items-center gap-1 rounded-md bg-brand-soft px-2 py-1 text-[12px] font-semibold text-brand hover:bg-[#d6e7dd]"><Plus size={13} /> Add</button>}
                   </li>
                 )
               })}

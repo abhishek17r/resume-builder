@@ -23,12 +23,12 @@ export default function OptimizePanel({ onShow }) {
   useEffect(() => { useStore.getState().setOptimizeTab(null) }, [])
   return (
     <div className="space-y-5 pb-24">
-      <div className="card flex gap-1 p-1.5">
-        {[['quality', Gauge, 'Quality score'], ['job', Target, 'Tailor to a job']].map(([id, Icon, label]) => (
+      <div className="flex overflow-hidden rounded-md border border-rule bg-white">
+        {[['quality', Gauge, 'Quality score'], ['job', Target, 'Tailor to a job']].map(([id, Icon, label], i) => (
           <button key={id} onClick={() => setTab(id)}
-            className={clsx('flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[15px] font-medium transition',
-              tab === id ? 'bg-brand-soft text-brand' : 'text-body hover:bg-soft')}>
-            <Icon size={18} /> {label}
+            className={clsx('flex flex-1 items-center justify-center gap-2 py-2.5 text-[14px] font-medium transition', i > 0 && 'border-l border-rule',
+              tab === id ? 'bg-ink text-white' : 'text-body hover:bg-field hover:text-ink')}>
+            <Icon size={16} /> {label}
           </button>
         ))}
       </div>
@@ -71,7 +71,7 @@ function Btn({ children, onClick, primary, disabled, title, icon: Icon }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title}
       className={clsx('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40',
-        primary ? 'bg-brand text-white hover:brightness-110' : 'bg-field text-ink hover:bg-slate-200')}>
+        primary ? 'bg-ink text-white hover:bg-ink/85' : 'border border-rule bg-white text-ink hover:border-ink/40')}>
       {Icon && <Icon size={14} />} {children}
     </button>
   )
@@ -102,7 +102,7 @@ function SuggestionCard({ kindLabel, before, after, reason, where, chips, onAcce
   useEffect(() => setText(after), [after])
   const placeholder = /\[[^\]]*\]/.test(text)
   return (
-    <div className={clsx('rounded-xl border p-4 transition', decided === 'accepted' ? 'border-emerald-200 bg-emerald-50/50' : decided === 'dismissed' ? 'border-slate-200 opacity-50' : 'border-slate-200 bg-white')}>
+    <div className={clsx('rounded-lg border p-4 transition', decided === 'accepted' ? 'border-emerald-200 bg-emerald-50/50' : decided === 'dismissed' ? 'border-slate-200 opacity-50' : 'border-slate-200 bg-white')}>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]">
         <span className="rounded-full bg-brand-soft px-2 py-0.5 font-semibold text-brand">{kindLabel}</span>
         {chips}
@@ -234,7 +234,7 @@ function QualityTab({ onShow }) {
         <ErrorNote error={batch.status === 'error' && batch.error} />
 
         {list.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-4 text-[14px] text-emerald-800"><CheckCircle2 size={18} /> {showIgnored ? 'Nothing ignored.' : 'No issues here. Nice work.'}</div>
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-4 text-[14px] text-emerald-800"><CheckCircle2 size={18} /> {showIgnored ? 'Nothing ignored.' : 'No issues here. Nice work.'}</div>
         ) : (
           <div className="space-y-2.5">
             {list.map(issue => (
@@ -276,7 +276,7 @@ function IssueRow({ issue, resume, ignored, rewrite, serverDown, onFix, onRewrit
   const where = whereLabel(resume, issue.target)
   const sev = SEVERITY[issue.severity]
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="rounded-lg border border-slate-200 p-4">
       <div className="flex items-start gap-2.5">
         <span className={clsx('mt-1.5 h-2 w-2 shrink-0 rounded-full', sev.dot)} title={sev.label} />
         <div className="min-w-0 flex-1">
@@ -556,13 +556,13 @@ function JobTab({ onShow }) {
           {(job.match.strengths.length > 0 || job.match.gaps.length > 0) && (
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {job.match.strengths.length > 0 && (
-                <div className="rounded-xl bg-emerald-50 p-3 text-[13px] text-emerald-900">
+                <div className="rounded-lg bg-emerald-50 p-3 text-[13px] text-emerald-900">
                   <p className="mb-1 font-semibold">Strengths</p>
                   <ul className="list-disc space-y-0.5 pl-4">{job.match.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
                 </div>
               )}
               {job.match.gaps.length > 0 && (
-                <div className="rounded-xl bg-red-50 p-3 text-[13px] text-red-900">
+                <div className="rounded-lg bg-red-50 p-3 text-[13px] text-red-900">
                   <p className="mb-1 font-semibold">Gaps to address</p>
                   <ul className="list-disc space-y-0.5 pl-4">{job.match.gaps.map((s, i) => <li key={i}>{s}</li>)}</ul>
                 </div>
@@ -596,7 +596,7 @@ function JobTab({ onShow }) {
             ))}
           </div>
           {pending.length > 0 && (
-            <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl bg-brand-soft p-4">
+            <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg bg-brand-soft p-4">
               <CopyPlus size={20} className="text-brand" />
               <p className="flex-1 text-[14px] text-ink">Keep this resume as it is and create a <b>tailored copy</b> with the {pending.length} pending edit{pending.length === 1 ? '' : 's'}.</p>
               <Btn primary onClick={tailoredCopy}>Create tailored copy</Btn>

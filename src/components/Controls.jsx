@@ -3,9 +3,9 @@ import { Minus, Plus } from 'lucide-react'
 
 export function Card({ id, title, children }) {
   return (
-    <section id={id} className="card scroll-mt-28 p-8">
-      <h2 className="mb-6 text-[26px] font-bold text-ink">{title}</h2>
-      <div className="space-y-7">{children}</div>
+    <section id={id} className="card scroll-mt-6 p-6">
+      <h2 className="display mb-5 text-[28px] leading-none text-ink">{title}</h2>
+      <div className="space-y-6">{children}</div>
     </section>
   )
 }
@@ -13,9 +13,9 @@ export function Card({ id, title, children }) {
 export function Field({ label, value, children }) {
   return (
     <div>
-      <div className="mb-3 flex items-baseline justify-between">
-        <span className="text-[16px] font-semibold text-ink">{label}</span>
-        {value != null && <span className="text-[15px] text-ink">{value}</span>}
+      <div className="mb-2.5 flex items-baseline justify-between">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">{label}</span>
+        {value != null && <span className="meta text-ink">{value}</span>}
       </div>
       {children}
     </div>
@@ -35,7 +35,7 @@ export function StepScale({ value, min, max, step, onChange, format = v => v }) 
   return (
     <div className="flex items-center gap-3">
       <div
-        className="relative flex h-11 flex-1 cursor-pointer items-center rounded-md bg-field"
+        className="relative flex h-10 flex-1 cursor-pointer items-center rounded-md border border-rule bg-white"
         onClick={e => {
           const r = e.currentTarget.getBoundingClientRect()
           set(Math.round(((e.clientX - r.left) / r.width) * (stops.length - 1)))
@@ -44,7 +44,7 @@ export function StepScale({ value, min, max, step, onChange, format = v => v }) 
       >
         {Array.from({ length: ticks }, (_, i) => (
           <div key={i} className="flex flex-1 justify-center">
-            {i === active ? <div className="h-11 w-10 rounded-md bg-brand" /> : <div className="h-4 w-px bg-slate-400/70" />}
+            {i === active ? <div className="h-6 w-2.5 rounded-sm bg-ink" /> : <div className="h-3 w-px bg-ink/25" />}
           </div>
         ))}
       </div>
@@ -56,7 +56,7 @@ export function StepScale({ value, min, max, step, onChange, format = v => v }) 
 
 function SquareBtn({ children, ...p }) {
   return (
-    <button {...p} className="grid h-11 w-11 place-items-center rounded-md border border-slate-300 text-ink transition hover:border-ink disabled:opacity-30">
+    <button {...p} className="grid h-10 w-10 place-items-center rounded-md border border-rule bg-white text-ink transition hover:border-ink/40 disabled:opacity-30">
       {children}
     </button>
   )
@@ -64,11 +64,11 @@ function SquareBtn({ children, ...p }) {
 
 export function Segmented({ value, options, onChange }) {
   return (
-    <div className="flex flex-wrap gap-3">
-      {options.map(o => (
+    <div className="inline-flex max-w-full flex-wrap overflow-hidden rounded-md border border-rule bg-white">
+      {options.map((o, i) => (
         <button key={o.value} onClick={() => onChange(o.value)}
-          className={clsx('min-w-28 rounded-lg border px-5 py-2.5 text-[15px] transition',
-            value === o.value ? 'border-brand bg-brand-soft text-brand' : 'border-slate-200 text-ink hover:border-slate-400')}>
+          className={clsx('px-4 py-2 text-[14px] transition', i > 0 && 'border-l border-rule',
+            value === o.value ? 'bg-ink text-white' : 'text-body hover:bg-field hover:text-ink')}>
           {o.label}
         </button>
       ))}
@@ -82,12 +82,12 @@ export function Tiles({ value, options, onChange, size = 'md' }) {
     <div className="flex flex-wrap gap-4">
       {options.map(o => (
         <button key={o.value} onClick={() => onChange(o.value)} className="flex flex-col items-center gap-2">
-          <div className={clsx('grid place-items-center overflow-hidden rounded-lg border-2 transition',
+          <div className={clsx('grid place-items-center overflow-hidden rounded-md border bg-white transition',
             size === 'sm' ? 'h-16 w-20' : 'h-[68px] w-[128px]',
-            value === o.value ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-slate-400')}>
+            value === o.value ? 'border-ink ring-1 ring-ink' : 'border-rule hover:border-ink/40')}>
             {o.art(value === o.value)}
           </div>
-          {o.label && <span className={clsx('text-[15px]', value === o.value ? 'font-medium text-ink' : 'text-muted')}>{o.label}</span>}
+          {o.label && <span className={clsx('text-[13px]', value === o.value ? 'font-medium text-ink' : 'text-muted')}>{o.label}</span>}
         </button>
       ))}
     </div>
@@ -106,8 +106,8 @@ export function Select({ value, options, onChange, style }) {
 export function Toggle({ checked, onChange, label }) {
   return (
     <label className="flex cursor-pointer items-center gap-3 text-[15px] text-ink">
-      <span className={clsx('relative h-6 w-11 rounded-full transition', checked ? 'bg-brand' : 'bg-slate-300')}>
-        <span className={clsx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
+      <span className={clsx('relative h-5 w-9 rounded-full transition', checked ? 'bg-ink' : 'bg-ink/20')}>
+        <span className={clsx('absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all', checked ? 'left-[18px]' : 'left-0.5')} />
       </span>
       <input type="checkbox" className="hidden" checked={checked} onChange={e => onChange(e.target.checked)} />
       {label}
@@ -118,8 +118,8 @@ export function Toggle({ checked, onChange, label }) {
 export function Chip({ checked, onChange, children }) {
   return (
     <button onClick={() => onChange(!checked)}
-      className={clsx('rounded-full border px-4 py-1.5 text-[14px] transition',
-        checked ? 'border-brand bg-brand-soft text-brand' : 'border-slate-200 text-ink hover:border-slate-400')}>
+      className={clsx('rounded-md border px-3 py-1.5 text-[13px] transition',
+        checked ? 'border-ink bg-ink text-white' : 'border-rule bg-white text-ink hover:border-ink/40')}>
       {children}
     </button>
   )
@@ -128,10 +128,10 @@ export function Chip({ checked, onChange, children }) {
 export function ColorInput({ label, value, onChange }) {
   return (
     <label className="flex cursor-pointer flex-col items-center gap-2">
-      <span className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ background: value }}>
+      <span className="relative h-11 w-11 overflow-hidden rounded-md ring-1 ring-rule" style={{ background: value }}>
         <input type="color" value={value} onChange={e => onChange(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
       </span>
-      <span className="text-[13px] text-muted">{label}</span>
+      <span className="meta text-muted">{label}</span>
     </label>
   )
 }
