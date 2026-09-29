@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FileText, Paintbrush, Gauge, Archive, Download, MoreHorizontal, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson,
-  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X,
+  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
 import { useServerStatus } from '../lib/useServerStatus'
@@ -19,6 +19,10 @@ export function Mark({ size = 28 }) {
   )
 }
 
+// Collapsed or expanded, as last chosen; until you choose, it's collapsed in the editor (room for the page preview).
+const PREF = 'rw.sidebar'
+const readPref = () => { try { return localStorage.getItem(PREF) } catch { return null } }
+
 export function Sidebar({ view, setView, openCreate, createTab }) {
   const { resumes, currentId, selectResume } = useStore()
   const vaultCount = useStore(s => s.vault.items.reduce((n, i) => n + i.bullets.length, 0))
@@ -26,13 +30,46 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
   const recent = [...resumes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6)
   const editing = ['content', 'customize', 'optimize'].includes(view)
   const go = v => { setView(v); setOpen(false) }
+  const [pref, setPref] = useState(readPref)
+  const collapsed = pref ? pref === 'collapsed' : editing
+  const toggle = () => {
+    const next = collapsed ? 'expanded' : 'collapsed'
+    setPref(next)
+    try { localStorage.setItem(PREF, next) } catch { /* private mode */ }
+  }
+  useEffect(() => {
+    const onKey = e => { if ((e.metaKey || e.ctrlKey) && e.key === '\\') { e.preventDefault(); toggle() } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
+  const rail = (
+    <div className="flex h-full flex-col items-center gap-1 py-5">
+      <button onClick={() => go('home')} title={APP_NAME} className="mb-3"><Mark /></button>
+      <RailBtn title="New resume" onClick={() => openCreate('blank')} dark><Plus size={17} /></RailBtn>
+      <div className="my-2 h-px w-6 bg-rule" />
+      <RailBtn title="Home" active={view === 'home'} onClick={() => go('home')}><Home size={17} /></RailBtn>
+      <RailBtn title={`Resumes (${resumes.length})`} active={view === 'overview'} onClick={() => go('overview')}><Files size={17} /></RailBtn>
+      <RailBtn title={`Vault (${vaultCount})`} active={view === 'vault'} onClick={() => go('vault')}><Archive size={17} /></RailBtn>
+      <RailBtn title="Tailor to a job" active={view === 'new' && createTab === 'job'} onClick={() => openCreate('job')}><Target size={17} /></RailBtn>
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <LocalDot />
+        <RailBtn title="Expand sidebar (⌘\)" onClick={toggle}><PanelLeftOpen size={17} /></RailBtn>
+      </div>
+    </div>
+  )
 
   const nav = (
     <div className="flex h-full flex-col">
-      <button onClick={() => go('home')} className="flex items-center gap-2.5 px-5 pb-5 pt-6 text-left">
-        <Mark />
-        <span className="display text-[21px] leading-none text-ink">{APP_NAME}</span>
-      </button>
+      <div className="flex items-center gap-1 pb-5 pl-5 pr-3 pt-6">
+        <button onClick={() => go('home')} className="flex min-w-0 items-center gap-2.5 text-left">
+          <Mark />
+          <span className="display truncate text-[21px] leading-none text-ink">{APP_NAME}</span>
+        </button>
+        <button onClick={toggle} title="Collapse sidebar (⌘\)" className="ml-auto hidden h-8 w-8 shrink-0 place-items-center rounded-md text-muted hover:bg-field hover:text-ink md:grid">
+          <PanelLeftClose size={17} />
+        </button>
+      </div>
 
       <div className="px-3">
         <button onClick={() => { openCreate('blank'); setOpen(false) }} className="flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2.5 text-[14px] font-medium text-white transition hover:bg-ink/85">
@@ -71,7 +108,9 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
   return (
     <>
       {/* Desktop */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-rule bg-paper md:block">{nav}</aside>
+      <aside className={clsx('sticky top-0 hidden h-screen shrink-0 border-r border-rule bg-paper md:block', collapsed ? 'w-[60px]' : 'w-60')}>
+        {collapsed ? rail : nav}
+      </aside>
 
       {/* Small screens: a compact bar and a drawer */}
       <div className="sticky top-0 z-40 flex items-center gap-2 border-b border-rule bg-paper px-4 py-3 md:hidden">
@@ -89,6 +128,23 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
       )}
     </>
   )
+}
+
+function RailBtn({ title, active, dark, children, ...p }) {
+  return (
+    <button {...p} title={title} aria-label={title}
+      className={clsx('grid h-9 w-9 place-items-center rounded-md transition',
+        dark ? 'bg-ink text-white hover:bg-ink/85' : active ? 'bg-white text-brand ring-1 ring-rule' : 'text-muted hover:bg-white/70 hover:text-ink')}>
+      {children}
+    </button>
+  )
+}
+
+function LocalDot() {
+  const server = useServerStatus()
+  const dot = server === null ? 'bg-slate-300' : server === false ? 'bg-red-500' : server.mock ? 'bg-amber-500' : 'bg-emerald-600'
+  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode' : `AI · ${server.model ?? server.provider}`
+  return <span title={`Saved in this browser · ${text}`} className={clsx('mb-1 h-[7px] w-[7px] rounded-full', dot)} />
 }
 
 function NavItem({ icon: Icon, active, count, children, ...p }) {
