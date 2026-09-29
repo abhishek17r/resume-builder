@@ -87,7 +87,7 @@ export default function CustomizePanel() {
 
         <Card id="c-templates" title="Templates">
           <p className="-mt-3 text-muted">Apply a complete look in one click. Your content stays the same.</p>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(178px,1fr))] gap-x-3 gap-y-5">
             {TEMPLATES.map(t => <TemplateCard key={t.id} resume={r} template={t} active={s.templateId === t.id} onApply={tpl => applyTemplate(tpl, KEEP_ON_TEMPLATE)} />)}
           </div>
           <button onClick={() => confirm('Reset all design settings to defaults?') && resetSettings()} className="flex items-center gap-2 text-[14px] font-medium text-muted hover:text-ink">

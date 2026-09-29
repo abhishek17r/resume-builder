@@ -60,6 +60,21 @@ export default function Landing({ onOpen, onImport, onJob }) {
         </div>
       </section>
 
+      {/* See it work */}
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <div className="mb-6 flex flex-wrap items-end gap-3">
+          <h2 className="display text-[36px] leading-none text-ink">From job post to tailored resume</h2>
+          <p className="meta ml-auto text-muted">paste · build · check the match · pick a design</p>
+        </div>
+        <div className="overflow-hidden rounded-[10px] border border-rule bg-white shadow-[0_30px_60px_-30px_rgba(23,23,27,.35)]">
+          <div className="flex items-center gap-2 border-b border-rule bg-paper px-4 py-2.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#e0dbcf]" /><span className="h-2.5 w-2.5 rounded-full bg-[#e0dbcf]" /><span className="h-2.5 w-2.5 rounded-full bg-[#e0dbcf]" />
+            <span className="meta mx-auto rounded-sm bg-white px-3 py-0.5 text-muted ring-1 ring-rule">localhost:5190</span>
+          </div>
+          <img src="/demo/tailor-journey.gif" alt="Pasting a job description, building a tailored resume from the vault, reviewing the match score and switching templates" width="960" height="600" loading="lazy" className="block h-auto w-full" />
+        </div>
+      </section>
+
       {/* How it works */}
       <section className="border-y border-rule bg-paper">
         <div className="mx-auto max-w-6xl px-6 py-16">
