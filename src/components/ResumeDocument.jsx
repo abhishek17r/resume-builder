@@ -342,6 +342,14 @@ function DocRoot({ ctx, children, style }) {
         '--fs-title': pt(s.baseSize + s.titleSize),
         '--fs-heading': pt(s.baseSize + s.headingSize),
         '--fs-entry': pt(s.baseSize + s.entrySize),
+        // Per-document list and link styling, read by the shared stylesheet below. (A per-document
+        // <style> with these values would leak: every resume on the page — thumbnails, the measurer —
+        // matches the same selectors, and the last one wins.)
+        '--list-style': s.listStyle === 'hyphen' ? '"–  "' : s.listStyle === 'none' ? 'none' : 'disc',
+        '--list-pad': s.listStyle === 'none' ? '0' : s.listStyle === 'hyphen' ? '1.1em' : '0.95em',
+        '--bullet-indent': `${s.bulletIndent ?? 0}mm`,
+        '--link-color': s.linkBlue ? '#1d4ed8' : 'inherit',
+        '--link-deco': s.linkUnderline ? 'underline' : 'none',
         fontSize: pt(s.baseSize),
         lineHeight: s.lineHeight,
         fontFamily: family(s.bodyFont),
@@ -349,24 +357,23 @@ function DocRoot({ ctx, children, style }) {
         ...style,
       }}
     >
-      <style>{docCss(s)}</style>
+      <style>{DOC_CSS}</style>
       {children}
     </div>
   )
 }
 
-function docCss(s) {
-  return `
-    .rdoc, .rdoc * { box-sizing: border-box; }
-    .rdoc p, .rdoc ul, .rdoc ol { margin: 0; }
-    .rdoc .rich ul { list-style: ${s.listStyle === 'hyphen' ? '"–  "' : s.listStyle === 'none' ? 'none' : 'disc'}; padding-left: ${s.listStyle === 'none' ? '0' : s.listStyle === 'hyphen' ? '1.1em' : '0.95em'}; }
-    .rdoc .rich ol { list-style: decimal; padding-left: 1.4em; }
-    .rdoc .rich ul, .rdoc .rich ol { margin-left: ${s.bulletIndent ?? 0}mm; }
-    .rdoc .rich li::marker { font-size: .9em; }
-    .rdoc .rich b, .rdoc .rich strong { font-weight: 700; }
-    .rdoc a { color: ${s.linkBlue ? '#1d4ed8' : 'inherit'}; text-decoration: ${s.linkUnderline ? 'underline' : 'none'}; }
-  `
-}
+// The same for every document; per-document values come from the CSS variables set on .rdoc.
+const DOC_CSS = `
+  .rdoc, .rdoc * { box-sizing: border-box; }
+  .rdoc p, .rdoc ul, .rdoc ol { margin: 0; }
+  .rdoc .rich ul { list-style: var(--list-style); padding-left: var(--list-pad); }
+  .rdoc .rich ol { list-style: decimal; padding-left: 1.4em; }
+  .rdoc .rich ul, .rdoc .rich ol { margin-left: var(--bullet-indent); }
+  .rdoc .rich li::marker { font-size: .9em; }
+  .rdoc .rich b, .rdoc .rich strong { font-weight: 700; }
+  .rdoc a { color: var(--link-color); text-decoration: var(--link-deco); }
+`
 
 function Band({ model }) {
   const { g, strong, base } = model.ctx
