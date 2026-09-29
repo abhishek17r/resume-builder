@@ -1,11 +1,13 @@
 import { uid } from '../defaults'
 import { SECTION_TYPES } from '../sections'
 import { sanitize } from '../format'
-import { TAGS, KIND_OF_SECTION } from '../../config/taxonomy'
+import { TAGS, TAG_BY_ID, STARTER_TAG_IDS, TAG_COLORS, KIND_OF_SECTION } from '../../config/taxonomy'
 
 // The Vault: every piece of CV content across all resumes, deduplicated and tagged.
 //
-// vault = { profile: Profile, items: Item[], dismissed: string[], syncedAt }
+// vault = { profile: Profile, tags: Tag[], dismissedTags: string[], items: Item[], dismissed: string[], syncedAt }
+// Tag = { id, source: 'starter'|'inferred'|'user'|'ai', label?, color?, description?, keywords? }
+//   Library tags (see config/taxonomy) store just their id (+ any label change); keywords come from the library.
 // Profile = { fullName, email, phone, location, photo, links: {type,value}[], headlines: string[] }
 // Item   = { id, key, kind, title, subtitle, roles: Role[], start, end, location, bullets: Bullet[], manual?, createdAt }
 // Bullet = { id, text, html, role, tags: string[], tagSource: 'rules'|'ai'|'user', origins: string[], sources: Source[], manual?, createdAt, updatedAt }
@@ -15,7 +17,8 @@ import { TAGS, KIND_OF_SECTION } from '../../config/taxonomy'
 // edited bullet isn't re-added from the resume it came from, and `dismissed` stops deleted ones returning.
 
 export const emptyProfile = () => ({ fullName: '', email: '', phone: '', location: '', photo: '', links: [], headlines: [] })
-export const emptyVault = () => ({ profile: emptyProfile(), items: [], dismissed: [], syncedAt: 0 })
+const starterTags = () => STARTER_TAG_IDS.map(id => ({ id, source: 'starter' }))
+export const emptyVault = () => ({ profile: emptyProfile(), tags: starterTags(), dismissedTags: [], items: [], dismissed: [], syncedAt: 0 })
 
 const PROFILE_FIELDS = ['fullName', 'email', 'phone', 'location', 'photo']
 
@@ -79,16 +82,75 @@ function dedupeBullets(item) {
   item.bullets = kept
 }
 
+// ---------- tags ----------
+const escRx = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// Keywords a tag matches: the library's for library tags; for your own, the words of its name (or given keywords).
+// Longer words match by stem ("Payments" → payment, payments, payment-heavy); phrases keep their words.
+export const tagKeywords = words => [...new Set(words.flatMap(w => norm(w).split(' ')).filter(w => w.length > 3 && !/^(and|with|work|the|from|into)$/.test(w)))]
+  .map(w => (w.length > 5 ? `${escRx(w.replace(/(es|s)$/, ''))}\\w*` : escRx(w)))
+
+// The vault's tags with their full definition (label, colour, description, keywords).
+export function vaultTags(vault) {
+  return (vault?.tags ?? starterTags()).map((t, i) => {
+    const lib = TAG_BY_ID[t.id]
+    return {
+      id: t.id,
+      source: t.source,
+      label: t.label ?? lib?.label ?? t.id,
+      color: t.color ?? lib?.color ?? TAG_COLORS[i % TAG_COLORS.length],
+      description: t.description ?? lib?.description ?? '',
+      keywords: t.keywords ?? lib?.keywords ?? tagKeywords([t.label ?? t.id]),
+      custom: !lib,
+    }
+  })
+}
+
 // ---------- local rule-based tagging (instant, free) ----------
 // Whole-word keyword matches, scored by how many distinct keywords hit; keep the top 3.
-const TAG_RX = TAGS.map(t => ({ id: t.id, rx: t.keywords.map(k => new RegExp(`(^|[^a-z0-9])(${k})(?=$|[^a-z0-9])`, 'i')) }))
-export function ruleTags(text) {
-  return TAG_RX
-    .map((t, order) => ({ id: t.id, order, hits: t.rx.filter(rx => rx.test(text)).length }))
+const rxCache = new Map()
+const regexesOf = t => {
+  const key = `${t.id}|${t.keywords.join('|')}`
+  if (!rxCache.has(key)) rxCache.set(key, t.keywords.map(k => new RegExp(`(^|[^a-z0-9])(${k})(?=$|[^a-z0-9])`, 'i')))
+  return rxCache.get(key)
+}
+// Tags you added yourself (or accepted from AI) always apply where they match; library tags fill up to 3.
+export function ruleTags(text, tags = TAGS) {
+  const hits = tags
+    .map((t, order) => ({ id: t.id, custom: !!t.custom, order, hits: regexesOf(t).filter(rx => rx.test(text)).length }))
     .filter(t => t.hits > 0)
     .sort((a, b) => b.hits - a.hits || a.order - b.order)
-    .slice(0, 3)
-    .map(t => t.id)
+  const custom = hits.filter(t => t.custom)
+  return [...custom, ...hits.filter(t => !t.custom).slice(0, Math.max(0, 3 - custom.length))].map(t => t.id)
+}
+
+// Library tags your data shows: a theme in at least 3 bullets (among their top tags), or in 2+ requirements
+// of job descriptions you've analysed. Tags you removed aren't suggested again.
+function inferTags(v, resumes, now) {
+  const have = new Set(v.tags.map(t => t.id))
+  const dismissed = new Set(v.dismissedTags ?? [])
+  const bulletTexts = v.items.filter(i => i.kind !== 'skills' && i.kind !== 'summaries').flatMap(i => i.bullets.map(b => b.text))
+  const jdTexts = resumes.flatMap(r => {
+    const a = r.optimize?.job?.analysis
+    return a ? a.requirements.map(q => `${q.text} ${(q.keywords ?? []).join(' ')}`) : []
+  })
+  const topInBullets = Object.fromEntries(TAGS.map(t => [t.id, 0]))
+  for (const text of bulletTexts) for (const id of ruleTags(text, TAGS)) topInBullets[id]++
+  for (const t of TAGS) {
+    if (have.has(t.id) || dismissed.has(t.id)) continue
+    const inJds = jdTexts.filter(x => regexesOf(t).some(rx => rx.test(x))).length
+    if (topInBullets[t.id] >= 3 || inJds >= 2) v.tags.push({ id: t.id, source: 'inferred', at: now })
+  }
+}
+
+// Keyword tags follow the current tag list; AI and your own tags only lose tags that no longer exist.
+function retag(v) {
+  const tags = vaultTags(v)
+  const ids = new Set(tags.map(t => t.id))
+  for (const item of v.items) {
+    for (const b of item.bullets) {
+      b.tags = b.tagSource === 'rules' ? ruleTags(b.text, tags) : b.tags.filter(id => ids.has(id))
+    }
+  }
 }
 
 // ---------- reading resumes ----------
@@ -194,6 +256,13 @@ export const itemKey = (kind, title, subtitle) => `${kind}:${norm(title)}${kind 
 export function syncVault(vault, resumes) {
   const v = structuredClone(vault ?? emptyVault())
   v.profile = syncProfile(v.profile, resumes)
+  // Vaults from before per-person tags: the starter set plus any library tags already on bullets.
+  if (!v.tags) {
+    const used = new Set(v.items.flatMap(i => i.bullets.flatMap(b => b.tags)))
+    v.tags = [...starterTags(), ...[...used].filter(id => TAG_BY_ID[id] && !STARTER_TAG_IDS.includes(id)).map(id => ({ id, source: 'inferred' }))]
+  }
+  v.dismissedTags ??= []
+  const tagList = vaultTags(v)
   const dismissed = new Set(v.dismissed)
   const byKey = new Map(v.items.map(it => [it.key, it]))
   for (const it of v.items) for (const b of it.bullets) b.sources = []
@@ -236,7 +305,7 @@ export function syncVault(vault, resumes) {
           }
           item.bullets.push({
             id: uid(), text: b.text, html: b.html || '', role: roleTitle,
-            tags: ruleTags(b.text), tagSource: 'rules', origins: [fp], sources: [source], createdAt: now, updatedAt: now,
+            tags: ruleTags(b.text, tagList), tagSource: 'rules', origins: [fp], sources: [source], createdAt: now, updatedAt: now,
           })
         }
       }
@@ -254,6 +323,8 @@ export function syncVault(vault, resumes) {
     if (item.roles?.length > 1) dedupeRoles(item)
     if (item.bullets.length > 1) dedupeBullets(item)
   }
+  inferTags(v, resumes, now)
+  retag(v)
   v.syncedAt = now
   return v
 }

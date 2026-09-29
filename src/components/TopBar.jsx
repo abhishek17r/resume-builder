@@ -64,7 +64,7 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
       <div className="flex items-center gap-1 pb-5 pl-5 pr-3 pt-6">
         <button onClick={() => go('home')} className="flex min-w-0 items-center gap-2.5 text-left">
           <Mark />
-          <span className="display truncate text-[21px] leading-none text-ink">{APP_NAME}</span>
+          <span className="display truncate text-[19px] leading-none text-ink">{APP_NAME}</span>
         </button>
         <button onClick={toggle} title="Collapse sidebar (⌘\)" className="ml-auto hidden h-8 w-8 shrink-0 place-items-center rounded-md text-muted hover:bg-field hover:text-ink md:grid">
           <PanelLeftClose size={17} />

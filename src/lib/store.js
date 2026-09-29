@@ -5,7 +5,8 @@ import { sampleResume, blankResume, uid, blankEntry, DEFAULT_SETTINGS } from './
 import { idbStorage } from './storage'
 import { SECTION_TYPES } from './sections'
 import { applyEditTo } from './optimize/apply'
-import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint, norm } from './vault/sync'
+import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint, norm, vaultTags, tagKeywords } from './vault/sync'
+import { TAG_COLORS } from '../config/taxonomy'
 import { defaultDesign } from './templates'
 
 const HISTORY_LIMIT = 100
@@ -256,7 +257,7 @@ export const useStore = create(
           return next
         }) })),
         addVaultBullet: (itemId, text, role = '') => set(state => ({ vault: { ...state.vault, items: state.vault.items.map(it => it.id !== itemId ? it : {
-          ...it, bullets: [...it.bullets, { id: uid(), text, html: '', role, tags: ruleTags(text), tagSource: 'rules', origins: [fingerprint(text)], sources: [], manual: true, createdAt: Date.now(), updatedAt: Date.now() }],
+          ...it, bullets: [...it.bullets, { id: uid(), text, html: '', role, tags: ruleTags(text, vaultTags(state.vault)), tagSource: 'rules', origins: [fingerprint(text)], sources: [], manual: true, createdAt: Date.now(), updatedAt: Date.now() }],
         }) } })),
         deleteVaultBullet: (itemId, bulletId) => set(state => {
           const item = state.vault.items.find(i => i.id === itemId)
@@ -276,6 +277,31 @@ export const useStore = create(
           const key = norm(headline)
           return { vault: { ...state.vault, profile: { ...p, headlines: p.headlines.filter(h => h !== headline), dismissedHeadlines: [...new Set([...(p.dismissedHeadlines ?? []), key])] } } }
         }),
+        // ----- vault tags (each person's own list) -----
+        // Add a tag by name (yours, or suggested by AI with a description and keywords). Returns its id.
+        addVaultTag: ({ label, description = '', keywords, source = 'user' }) => {
+          const name = label.trim()
+          if (!name) return null
+          const state = get()
+          const existing = vaultTags(state.vault).find(t => norm(t.label) === norm(name))
+          if (existing) return existing.id
+          const id = `u-${norm(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${uid().slice(0, 4)}`
+          const tag = { id, source, label: name, description, color: TAG_COLORS[(state.vault.tags ?? []).length % TAG_COLORS.length], keywords: tagKeywords(keywords?.length ? keywords : [name]) }
+          set({ vault: { ...state.vault, tags: [...(state.vault.tags ?? []), tag] } })
+          get().syncVault()
+          return id
+        },
+        renameVaultTag: (id, label) => set(state => ({ vault: { ...state.vault, tags: (state.vault.tags ?? []).map(t => (t.id === id ? { ...t, label: label.trim() || t.label } : t)) } })),
+        // Removing a tag takes it off every bullet and stops it being inferred again.
+        removeVaultTag: id => {
+          set(state => ({ vault: {
+            ...state.vault,
+            tags: (state.vault.tags ?? []).filter(t => t.id !== id),
+            dismissedTags: [...new Set([...(state.vault.dismissedTags ?? []), id])],
+            items: state.vault.items.map(it => ({ ...it, bullets: it.bullets.map(b => (b.tags.includes(id) ? { ...b, tags: b.tags.filter(x => x !== id) } : b)) })),
+          } }))
+          get().syncVault()
+        },
         // Per-bullet ignored checks (same idea as Optimize's "Ignore issue"), stored on the vault bullet.
         ignoreVaultIssue: (itemId, bulletId, check, ignored = true) => set(state => ({ vault: mapBullet(state.vault, itemId, bulletId, b => {
           const list = new Set(b.ignored ?? [])
@@ -292,7 +318,8 @@ export const useStore = create(
         // Apply AI tags: [{ itemId, bulletId, tags }]. Tags a user set by hand are left alone.
         setVaultTags: updates => set(state => {
           const byBullet = new Map(updates.map(u => [u.bulletId, u.tags]))
-          return { vault: { ...state.vault, items: state.vault.items.map(it => ({ ...it, bullets: it.bullets.map(b => (byBullet.has(b.id) && b.tagSource !== 'user' ? { ...b, tags: byBullet.get(b.id), tagSource: 'ai' } : b)) })) } }
+          const ids = new Set(vaultTags(state.vault).map(t => t.id))
+          return { vault: { ...state.vault, items: state.vault.items.map(it => ({ ...it, bullets: it.bullets.map(b => (byBullet.has(b.id) && b.tagSource !== 'user' ? { ...b, tags: byBullet.get(b.id).filter(id => ids.has(id)), tagSource: 'ai' } : b)) })) } }
         }),
 
         pageCount: 1,

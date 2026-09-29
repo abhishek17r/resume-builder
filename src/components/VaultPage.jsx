@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Search, RefreshCw, Sparkles, Plus, Trash2, Loader2, Tag, X, LayoutList, Grid3x3, AlertCircle, Pencil, Check, Wand2, EyeOff, RotateCcw, ChevronDown, User, Mail, Phone, MapPin, Link2 } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { TAGS, TAG_BY_ID, VAULT_KINDS } from '../config/taxonomy'
+import { VAULT_KINDS } from '../config/taxonomy'
+import { useVaultTags } from '../lib/vault/useVaultTags'
 import { post, health } from '../lib/api'
 import { scoreVault, scoreBg } from '../lib/vault/score'
 import { autoFixText } from '../lib/optimize/rules'
@@ -23,6 +24,11 @@ export default function VaultPage() {
   const [tagging, setTagging] = useState({ status: 'idle' })
   const [server, setServer] = useState(null)
   const [needsWorkOnly, setNeedsWorkOnly] = useState(false)
+  const { tags: TAGS } = useVaultTags()
+  const resumes = useStore(s => s.resumes)
+  const { addVaultTag, removeVaultTag } = useStore()
+  const [newTag, setNewTag] = useState('')
+  const [finding, setFinding] = useState({ status: 'idle' })
 
   useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -42,7 +48,7 @@ export default function VaultPage() {
   const tagCounts = useMemo(() => {
     const scoped = scopedItems.flatMap(i => i.bullets)
     return Object.fromEntries(TAGS.map(t => [t.id, scoped.filter(b => b.tags.includes(t.id)).length]))
-  }, [scopedItems])
+  }, [scopedItems, TAGS])
 
   const toggleTag = id => setTagFilter(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
@@ -70,6 +76,23 @@ export default function VaultPage() {
       setTagging({ status: 'error', error: e.message })
     }
   }
+
+  // AI proposes new tags from your bullets and the job descriptions you've analysed; they're added straight away.
+  const findTags = async () => {
+    setFinding({ status: 'loading' })
+    try {
+      const jobs = resumes.map(r => r.optimize?.job?.analysis).filter(Boolean)
+        .map(a => ({ title: a.title, requirements: a.requirements.map(q => q.text).slice(0, 40) })).slice(0, 20)
+      const bullets = allBullets.filter(({ item }) => item.kind !== 'skills' && item.kind !== 'summaries').map(({ b }) => b.text).slice(0, 150)
+      const data = await post('/api/vault/suggest-tags', { existing: TAGS.map(t => t.label), jobs, bullets })
+      if (data.mock) { setFinding({ status: 'error', error: 'The AI server is in demo mode (no API key). Tags are still inferred from your bullets automatically.' }); return }
+      const added = data.tags.map(t => addVaultTag({ ...t, source: 'ai' })).filter(Boolean)
+      setFinding({ status: 'done', added: data.tags.map(t => t.label), count: added.length })
+    } catch (e) {
+      setFinding({ status: 'error', error: e.message })
+    }
+  }
+  const addTag = () => { if (newTag.trim()) { addVaultTag({ label: newTag }); setNewTag('') } }
 
   const newItem = () => {
     const kind = VAULT_KINDS.find(k => k.id === selected)?.id ?? items.find(i => i.id === selected)?.kind ?? 'experience'
@@ -137,15 +160,37 @@ export default function VaultPage() {
           {/* horizontal dimension */}
           {selected !== 'profile' && <>
           <div className="card space-y-3 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Your tags</span>
+              <span className="text-[12px] text-muted">· added automatically when your bullets or job descriptions show a theme (✦)</span>
+              <button onClick={findTags} disabled={finding.status === 'loading' || server === false}
+                className="ml-auto flex items-center gap-1.5 rounded-md border border-rule bg-white px-2.5 py-1 text-[12px] font-medium text-ink hover:border-ink/40 disabled:opacity-40"
+                title={server === false ? 'AI server offline' : 'Suggest new tags from your bullets and the jobs you target'}>
+                {finding.status === 'loading' ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Find tags with AI
+              </button>
+            </div>
+            {finding.status === 'error' && <p className="flex gap-1.5 text-[12px] text-red-700"><AlertCircle size={14} className="shrink-0" /> {finding.error}</p>}
+            {finding.status === 'done' && <p className="text-[12px] text-emerald-800">{finding.count ? `Added ${finding.added.join(', ')}. Use “AI tag” to apply them to your bullets.` : 'No new tags to add: your tags already cover your bullets and jobs.'}</p>}
             <div className="flex flex-wrap gap-1.5">
               {TAGS.map(t => (
-                <button key={t.id} onClick={() => toggleTag(t.id)} title={t.description}
-                  className={clsx('flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] ring-1 transition', tagFilter.has(t.id) ? 'text-white ring-transparent' : 'bg-white text-ink ring-slate-200 hover:ring-slate-400')}
-                  style={tagFilter.has(t.id) ? { background: t.color } : undefined}>
-                  {!tagFilter.has(t.id) && <span className="h-2 w-2 rounded-full" style={{ background: t.color }} />}
-                  {t.label} <span className={tagFilter.has(t.id) ? 'text-white/80' : 'text-muted'}>{tagCounts[t.id]}</span>
-                </button>
+                <span key={t.id} className="group/tag relative">
+                  <button onClick={() => toggleTag(t.id)} title={[t.description, t.source === 'inferred' ? 'Added because your bullets or job descriptions show it.' : t.source === 'ai' ? 'Suggested by AI.' : ''].filter(Boolean).join(' ')}
+                    className={clsx('flex items-center gap-1.5 rounded-full py-1 pl-3 pr-3 text-[13px] ring-1 transition group-hover/tag:pr-7', tagFilter.has(t.id) ? 'text-white ring-transparent' : 'bg-white text-ink ring-rule hover:ring-ink/30')}
+                    style={tagFilter.has(t.id) ? { background: t.color } : undefined}>
+                    {!tagFilter.has(t.id) && <span className="h-2 w-2 rounded-full" style={{ background: t.color }} />}
+                    {t.label}
+                    {(t.source === 'inferred' || t.source === 'ai') && <span className={tagFilter.has(t.id) ? 'text-white/80' : 'text-brand'}>✦</span>}
+                    <span className={clsx('meta', tagFilter.has(t.id) ? 'text-white/80' : 'text-muted')}>{tagCounts[t.id]}</span>
+                  </button>
+                  <button onClick={() => confirm(`Remove the tag “${t.label}” from your vault? It comes off every bullet and won’t be added again automatically.`) && removeVaultTag(t.id)}
+                    className="absolute right-1.5 top-1/2 hidden -translate-y-1/2 rounded-full p-0.5 text-muted hover:bg-red-50 hover:text-red-600 group-hover/tag:block" title="Remove tag"><X size={12} /></button>
+                </span>
               ))}
+              <span className="flex items-center rounded-full border border-dashed border-ink/25 bg-white pl-2.5 focus-within:border-brand">
+                <Plus size={13} className="text-muted" />
+                <input value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTag()} maxLength={40}
+                  placeholder="Add tag" className="w-28 bg-transparent px-1.5 py-1 text-[13px] outline-none" />
+              </span>
               <button onClick={() => setUntaggedOnly(v => !v)} className={clsx('rounded-full px-3 py-1 text-[13px] ring-1', untaggedOnly ? 'bg-ink text-white ring-ink' : 'bg-white text-muted ring-slate-200 hover:ring-slate-400')}>
                 Untagged {untagged}
               </button>
@@ -368,6 +413,7 @@ function ItemCard({ item, bullets, scores, server }) {
 }
 
 function BulletRow({ item, b, result, server }) {
+  const { tags: TAGS, byId: TAG_BY_ID } = useVaultTags()
   const { updateVaultBullet, deleteVaultBullet } = useStore()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -520,6 +566,7 @@ function MiniBtn({ children, onClick, primary, disabled, title, icon: Icon, spin
 
 // Vertical × horizontal: bullet counts per entry and tag.
 function Matrix({ items, onPick }) {
+  const { tags: TAGS } = useVaultTags()
   const rows = items.filter(i => i.bullets.length)
   if (!rows.length) return <div className="card p-8 text-center text-muted">No bullets yet.</div>
   return (

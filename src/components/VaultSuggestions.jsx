@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Archive, Plus, Replace, Eye, X, Sparkles, Loader2, AlertCircle, Undo2 } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
-import { TAG_BY_ID, VAULT_KINDS } from '../config/taxonomy'
+import { VAULT_KINDS } from '../config/taxonomy'
+import { useVaultTags } from '../lib/vault/useVaultTags'
 import { vaultCandidates, rankForQuality, rankForJob } from '../lib/vault/suggest'
 import { scoreBg } from '../lib/vault/score'
 import { post } from '../lib/api'
@@ -12,6 +13,7 @@ const KIND_LABEL = Object.fromEntries(VAULT_KINDS.map(k => [k.id, k.label]))
 // "From your vault": bullets you've written elsewhere (other resumes, or added in the Vault) for entries
 // already on this resume. Without a job they're ranked by score and new strengths; with a job, by the requirements they evidence.
 export default function VaultSuggestions({ mode, onShow, serverDown }) {
+  const { byId: TAG_BY_ID } = useVaultTags()
   const resume = useResume()
   const vault = useStore(s => s.vault)
   const pages = useStore(s => s.pageCount)

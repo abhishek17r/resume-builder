@@ -1,4 +1,4 @@
-// App-level configuration for the Vault: the same for every user.
+// App-level configuration for the Vault: the tag library and vertical groups, the same for every user.
 //
 // VERTICAL  — what the content is about (a company, a project, a certification…),
 //             derived from the resume section it came from.
@@ -14,17 +14,17 @@ export const TAGS = [
     keywords: ['hired', 'hiring', 'recruited', 'managed a team', 'team of \\d+', 'direct reports', 'mentor', 'mentored', 'mentoring', 'onboarding', 'coached', 'grew the team', 'built (a|the) team', 'performance reviews', 'promoted \\d+', 'onboarded \\d+'],
   },
   {
-    id: 'leadership', label: 'Leadership & strategy', color: '#4f46e5',
+    id: 'leadership', label: 'Leadership', color: '#4f46e5',
     description: 'Setting direction and strategy, owning roadmaps, leading initiatives across teams, influencing decisions.',
     keywords: ['led', 'lead', 'leading', 'strategy', 'strategic', 'vision', 'roadmap', 'spearheaded', 'drove', 'owned', 'headed', 'championed', 'tech lead', 'technical direction', 'initiative'],
   },
   {
-    id: 'financial', label: 'Financial impact', color: '#059669',
+    id: 'financial', label: 'Revenue & cost', color: '#059669',
     description: 'Revenue, ARR, cost savings, margin, pricing, budgets or any money-denominated outcome.',
     keywords: ['revenue', 'arr', 'mrr', 'arpu', 'profit', 'margin', 'cost', 'costs', 'savings', 'budget', 'pricing', 'monetiz\\w*', 'cogs', 'opex', '[$€£₹][\\d.,]+\\w*', 'million', 'billion'],
   },
   {
-    id: 'growth', label: 'Growth & customer impact', color: '#0891b2',
+    id: 'growth', label: 'Customer & growth', color: '#0891b2',
     description: 'Users, customers, acquisition, conversion, retention, engagement, satisfaction.',
     keywords: ['users', 'customers', 'mau', 'dau', 'conversion', 'retention', 'churn', 'engagement', 'acquisition', 'sign-?ups', 'activation', 'ctr', 'nps', 'subscribers', 'growth', 'adoption'],
   },
@@ -49,7 +49,7 @@ export const TAGS = [
     keywords: ['\\bai\\b', 'ai-powered', '\\bml\\b', 'machine learning', 'llm', 'genai', 'generative', 'recommendation', 'personaliz\\w*', 'nlp', 'model', 'embedding', 'vector', 'semantic search', 'prompt'],
   },
   {
-    id: 'operations', label: 'Operations & efficiency', color: '#ca8a04',
+    id: 'operations', label: 'Process & efficiency', color: '#ca8a04',
     description: 'Improving processes, automation, efficiency, turnaround time, operational excellence.',
     keywords: ['process', 'automated', 'automation', 'efficien\\w*', 'streamlined', 'workflow', 'operations', 'turnaround', 'hours a', 'time from', 'reduced time', 'self-serve', 'self-service', 'tooling'],
   },
@@ -59,7 +59,7 @@ export const TAGS = [
     keywords: ['uptime', 'availability', 'reliab\\w*', 'incident', 'mttr', 'on-call', 'outage', 'security', 'compliance', 'soc ?2', 'pci', 'gdpr', 'hipaa', 'audit', 'observability', 'quality', 'deliverability', 'fraud'],
   },
   {
-    id: 'collaboration', label: 'Collaboration & stakeholders', color: '#ea580c',
+    id: 'collaboration', label: 'Cross-functional', color: '#ea580c',
     description: 'Partnering across teams, working with stakeholders, clients, vendors and partners.',
     keywords: ['partnered', 'partnering', 'collaborated', 'stakeholder', 'cross-functional', 'cross-team', 'worked with', 'aligned', 'vendors', 'clients', 'partners'],
   },
@@ -76,6 +76,11 @@ export const TAGS = [
 ]
 
 export const TAG_BY_ID = Object.fromEntries(TAGS.map(t => [t.id, t]))
+
+// Each person's vault has its own tags. A new vault starts with these few; others from the library above
+// are added when your bullets or job descriptions show them, and you can add your own.
+export const STARTER_TAG_IDS = ['leadership', 'collaboration', 'technical', 'financial', 'growth', 'operations']
+export const TAG_COLORS = ['#0f766e', '#b45309', '#7c3aed', '#be123c', '#1d4ed8', '#4d7c0f', '#c2410c', '#0369a1', '#a21caf', '#57534e']
 
 // Vertical groups, in display order. `from` lists the resume section types that feed each group.
 export const VAULT_KINDS = [

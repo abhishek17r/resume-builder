@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Archive, Plus, Check, ChevronDown } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { TAGS, TAG_BY_ID, KIND_OF_SECTION, VAULT_KINDS } from '../config/taxonomy'
+import { KIND_OF_SECTION, VAULT_KINDS } from '../config/taxonomy'
+import { useVaultTags } from '../lib/vault/useVaultTags'
 import { SECTION_TYPES } from '../lib/sections'
 import { norm, fingerprint } from '../lib/vault/sync'
 import { getItems, appendBullet } from '../lib/optimize/bullets'
@@ -13,6 +14,7 @@ const TITLE_FIELD = { experience: 'employer', education: 'school', organisations
 // "Insert from vault" for an entry's description: bullets from the same company/project first,
 // filterable by tag, one click to add.
 export default function VaultPicker({ section, entry }) {
+  const { tags: TAGS, byId: TAG_BY_ID } = useVaultTags()
   const vault = useStore(s => s.vault)
   const setEntry = useStore(s => s.setEntry)
   const [open, setOpen] = useState(false)
