@@ -6,7 +6,7 @@ import { Mark } from './TopBar'
 import { sampleResume } from '../lib/defaults'
 import { TEMPLATES } from '../lib/templates'
 import { useServerStatus } from '../lib/useServerStatus'
-import { APP_NAME, APP_TAGLINE, REPOS } from '../config/app'
+import { APP_NAME, APP_TAGLINE, INSTALL_CMD } from '../config/app'
 
 // The front door: what this is, how it works, and how to run it locally. No pricing, no accounts.
 export default function Landing({ onOpen, onImport, onJob }) {
@@ -130,10 +130,10 @@ export default function Landing({ onOpen, onImport, onJob }) {
 }
 
 const STEPS = [
-  ['Get both parts', `git clone ${REPOS.app}\ngit clone ${REPOS.api}`],
-  ['Install', 'cd resume-builder && npm install\ncd ../resume-builder-api && npm install'],
-  ['Add an AI key (optional)', 'cp .env.example .env\n# set OPENAI_API_KEY=… or ANTHROPIC_API_KEY=…\n# no key: AI features run in demo mode'],
-  ['Start both', '# in resume-builder-api\nnpm run dev          # AI server on :8787\n# in resume-builder\nnpm run dev          # app on :5190'],
+  ['Install and start', `${INSTALL_CMD}\n# gets the app and the AI server, installs both, starts them`],
+  ['Open it', '# http://localhost:5190\n# works straight away; AI features run in demo mode'],
+  ['Add an AI key (optional)', '# in offerstack/api/.env\nOPENAI_API_KEY=…      # or ANTHROPIC_API_KEY=…'],
+  ['Start again later', 'cd offerstack/app && npm run dev'],
 ]
 
 function LocalSetup() {

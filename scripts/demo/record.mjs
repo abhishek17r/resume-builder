@@ -106,7 +106,7 @@ try {
   // 2. Build: vault sync, job analysis, picking, tailoring, scoring
   // Demo mode answers instantly; pace AI calls in this recording so each build step is visible.
   await js(`const f = window.fetch; window.fetch = async (u, o) => { if (String(u).includes('/api/')) await new Promise(r => setTimeout(r, 1100)); return f(u, o) }`)
-  await js(`${helpers} byText('button', /^Build from vault$/).click()`)
+  await js(`${helpers} byText('button', /^Build for this job$/).click()`)
   caption = '2 · Built from your vault, tailored to the job'
   let last = ''
   const t0 = Date.now()
@@ -144,11 +144,10 @@ try {
   caption = '4 · Pick a design'
   await js(`${helpers} byText('header nav button', /^Design$/).click()`)
   await sleep(1200)
-  await js(`${helpers} document.getElementById('c-templates')?.scrollIntoView({ block: 'start' })`)
-  await sleep(1800)
+  await sleep(1800) // templates are in the Style strip at the top of the Design tab
   await shot(1300)
   for (const name of ['Current', 'Harbor']) {
-    await js(`${helpers} [...document.querySelectorAll('#c-templates button')].find(b => b.innerText.split('\\n').map(x => x.trim()).includes(${JSON.stringify(name)}))?.click()`)
+    await js(`${helpers} [...document.querySelectorAll('#editor-pane button')].find(b => b.innerText.split('\\n').map(x => x.trim()).includes(${JSON.stringify(name)}))?.click()`)
     await sleep(1400)
     await shot(1500)
   }
@@ -162,8 +161,8 @@ try {
   writeFileSync(join(OUT, 'frames.json'), JSON.stringify(frames, null, 1))
   console.log(`${frames.length} frames`)
 } catch (e) {
-  console.error('FAILED', e.message)
-  writeFileSync(join(OUT, 'frames.json'), JSON.stringify(frames, null, 1))
+  console.error('Recording failed:', e.message)
+  process.exitCode = 1 // so the GIF isn't rebuilt from a partial recording
 } finally {
   ws?.close()
   chrome.kill()
