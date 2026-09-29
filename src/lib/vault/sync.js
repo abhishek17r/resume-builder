@@ -40,13 +40,43 @@ export const norm = t => (t || '').toLowerCase().replace(/<[^>]+>/g, ' ').replac
 export const fingerprint = text => norm(text).replace(/[.\s]+$/, '')
 
 const words = t => new Set(norm(t).split(' ').filter(w => w.length > 2))
+
+// The numbers a bullet states ("30%", "$1.2M", "8 engineers" → 8), normalised: a changed metric is a different bullet.
+const METRIC = /[$€£₹]?\d[\d,.]*\s*(?:%|[kmbt]\b|x\b|\+)?/gi
+export const metricsOf = t => [...new Set(((t || '').match(METRIC) ?? []).map(n => n.toLowerCase().replace(/[,\s]/g, '').replace(/\.$/, '')))].sort().join('|')
+
+// One bullet or two? The same only when every number matches and the wording is nearly the same
+// (about 80% of the words shared). A new metric or a real rewrite keeps its own copy.
 export function similar(a, b) {
+  if (metricsOf(a) !== metricsOf(b)) return false
   const A = words(a)
   const B = words(b)
   if (!A.size || !B.size) return false
   let inter = 0
   for (const w of A) if (B.has(w)) inter++
-  return inter / (A.size + B.size - inter) >= 0.85
+  return inter / (A.size + B.size - inter) >= 0.8
+}
+
+// Collapse duplicate bullets in an item into one copy that keeps every origin and source.
+// The copy edited in the vault (text or tags) wins; otherwise the earlier one.
+const edited = b => b.tagSource === 'user' || b.manual || (b.updatedAt ?? 0) > (b.createdAt ?? 0) + 1000
+function dedupeBullets(item) {
+  const kept = []
+  for (const b of item.bullets) {
+    const i = kept.findIndex(k => (k.role || '') === (b.role || '') && (k.origins.some(o => b.origins.includes(o)) || similar(k.text, b.text)))
+    if (i < 0) { kept.push(b); continue }
+    const twin = kept[i]
+    const [keep, drop] = edited(b) && !edited(twin) ? [b, twin] : [twin, b]
+    const merged = {
+      ...keep,
+      origins: [...new Set([...keep.origins, ...drop.origins])],
+      sources: [...keep.sources, ...drop.sources.filter(s => !keep.sources.some(k => k.resumeId === s.resumeId && k.entryId === s.entryId))],
+      ignored: [...new Set([...(keep.ignored ?? []), ...(drop.ignored ?? [])])],
+      ...(keep.tagSource !== 'user' && drop.tagSource === 'user' ? { tags: drop.tags, tagSource: 'user' } : {}),
+    }
+    kept[i] = merged
+  }
+  item.bullets = kept
 }
 
 // ---------- local rule-based tagging (instant, free) ----------
@@ -220,7 +250,10 @@ export function syncVault(vault, resumes) {
       item.bullets = item.bullets.filter(b => b.manual || !b.origins.some(fp => spoken.has(fp)))
     }
   }
-  for (const item of v.items) if (item.roles?.length > 1) dedupeRoles(item)
+  for (const item of v.items) {
+    if (item.roles?.length > 1) dedupeRoles(item)
+    if (item.bullets.length > 1) dedupeBullets(item)
+  }
   v.syncedAt = now
   return v
 }

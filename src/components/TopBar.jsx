@@ -19,7 +19,7 @@ export function Mark({ size = 28 }) {
   )
 }
 
-export function Sidebar({ view, setView, openCreate }) {
+export function Sidebar({ view, setView, openCreate, createTab }) {
   const { resumes, currentId, selectResume } = useStore()
   const vaultCount = useStore(s => s.vault.items.reduce((n, i) => n + i.bullets.length, 0))
   const [open, setOpen] = useState(false)
@@ -44,7 +44,7 @@ export function Sidebar({ view, setView, openCreate }) {
         <NavItem icon={Home} active={view === 'home'} onClick={() => go('home')}>Home</NavItem>
         <NavItem icon={Files} active={view === 'overview'} onClick={() => go('overview')} count={resumes.length}>Resumes</NavItem>
         <NavItem icon={Archive} active={view === 'vault'} onClick={() => go('vault')} count={vaultCount}>Vault</NavItem>
-        <NavItem icon={Target} active={view === 'new'} onClick={() => { openCreate('job'); setOpen(false) }}>Tailor to a job</NavItem>
+        <NavItem icon={Target} active={view === 'new' && createTab === 'job'} onClick={() => { openCreate('job'); setOpen(false) }}>Tailor to a job</NavItem>
       </nav>
 
       {recent.length > 0 && (
@@ -126,7 +126,7 @@ const TABS = [
 // Header for an open resume: where you are, the three editor tabs, and document actions.
 export function EditorHeader({ view, setView, onDownload, openCreate }) {
   const resume = useResume()
-  const { resumes, selectResume, deleteResume, renameResume, setLabel } = useStore()
+  const { resumes, selectResume, deleteResume, renameResume, setLabel, duplicateResume } = useStore()
   const [menu, setMenu] = useState(null) // 'resumes' | 'more' | null
   const ref = useRef(null)
 
@@ -170,7 +170,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
               </div>
               <div className="my-1 border-t border-rule" />
               <MenuItem icon={Plus} onClick={() => { openCreate('blank'); setMenu(null) }}>New resume…</MenuItem>
-              <MenuItem icon={GitBranch} onClick={() => { openCreate('copy'); setMenu(null) }}>New version of this…</MenuItem>
+              <MenuItem icon={GitBranch} onClick={() => { duplicateResume(resume.id); setMenu(null) }}>New version of this…</MenuItem>
               <MenuItem icon={Upload} onClick={() => { openCreate('file'); setMenu(null) }}>Import resume…</MenuItem>
               <MenuItem icon={LinkedInIcon} onClick={() => { openCreate('linkedin'); setMenu(null) }}>Import from LinkedIn…</MenuItem>
             </Menu>
@@ -187,7 +187,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
             </button>
             {menu === 'more' && (
               <Menu>
-                <MenuItem icon={GitBranch} onClick={() => { openCreate('copy'); setMenu(null) }}>New version of this…</MenuItem>
+                <MenuItem icon={GitBranch} onClick={() => { duplicateResume(resume.id); setMenu(null) }}>New version of this…</MenuItem>
                 <MenuItem icon={Pencil} onClick={() => { const n = prompt('Rename resume', resume.name); if (n?.trim()) renameResume(resume.id, n.trim()); setMenu(null) }}>Rename</MenuItem>
                 <MenuItem icon={Tag} onClick={() => { const l = prompt('Label (leave empty to remove), e.g. "b2c - google"', resume.label ?? ''); if (l !== null) setLabel(resume.id, l); setMenu(null) }}>{resume.label ? 'Edit label' : 'Add label'}</MenuItem>
                 <MenuItem icon={FileJson} onClick={() => { exportJson(); setMenu(null) }}>Export as JSON</MenuItem>

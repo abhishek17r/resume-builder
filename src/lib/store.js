@@ -239,7 +239,12 @@ export const useStore = create(
         setFocus: focus => set({ focus }),
         // ----- vault: master data across all resumes (not part of undo history) -----
         vault: emptyVault(),
-        syncVault: () => set(state => ({ vault: syncVault(state.vault, state.resumes) })),
+        // No-op syncs (nothing new) leave state alone, so the periodic sync doesn't re-render or re-save.
+        syncVault: () => set(state => {
+          const next = syncVault(state.vault, state.resumes)
+          const same = JSON.stringify({ ...next, syncedAt: 0 }) === JSON.stringify({ ...state.vault, syncedAt: 0 })
+          return same ? state : { vault: next }
+        }),
         updateVaultBullet: (itemId, bulletId, patch) => set(state => ({ vault: mapBullet(state.vault, itemId, bulletId, b => {
           const next = { ...b, ...patch, updatedAt: Date.now() }
           if (patch.text !== undefined && patch.text !== b.text) {

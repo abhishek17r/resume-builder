@@ -1,52 +1,68 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  ArrowLeft, FilePlus2, Copy, Sparkles, Upload, FileText, Loader2, AlertCircle, CheckCircle2,
-  Type, LayoutTemplate, Palette, FileArchive, ChevronRight, Target, Circle, Archive,
+  ArrowLeft, FilePlus2, Upload, FileText, Loader2, AlertCircle, CheckCircle2,
+  Type, Palette, FileArchive, ChevronRight, Target, Circle, Archive,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { SECTION_TYPES } from '../lib/sections'
 import { importResumeFile, importLinkedIn, ACCEPT, LINKEDIN_ACCEPT } from '../lib/import'
-import { useLabels, LabelChip } from './ResumeLabel'
+import { useLabels } from './ResumeLabel'
 import { LinkedInIcon } from './BrandIcons'
 import { post, health } from '../lib/api'
-import { composePayload, planFromVault, tailorPayload, buildFromVault } from '../lib/vault/compose'
+import { composePayload, planFromVault, tailorPayload, buildFromVault, wholeVaultComposition, vaultHasContent } from '../lib/vault/compose'
+import { TEMPLATES, KEEP_ON_TEMPLATE, DEFAULT_TEMPLATE_ID } from '../lib/templates'
+import { DEFAULT_SETTINGS } from '../lib/defaults'
+import { TemplateCard } from './TemplateGallery'
 import { jobScore } from '../lib/optimize/jobScore'
 import { resumeToPayload } from '../lib/optimize/serialize'
 
-// Page nav: two groups, each item a page of its own.
+// Page nav: groups, each item a page of its own.
 const NAV = [
-  { group: 'Start fresh', items: [
+  { group: 'Start', items: [
+    { id: 'vault', icon: Archive, label: 'From your vault' },
     { id: 'blank', icon: FilePlus2, label: 'Blank resume' },
-    { id: 'sample', icon: Sparkles, label: 'From sample' },
-    { id: 'copy', icon: Copy, label: 'Copy a resume' },
   ] },
   { group: 'Tailor', items: [
     { id: 'job', icon: Target, label: 'From a job description' },
   ] },
   { group: 'Import', items: [
-    { id: 'file', icon: Upload, label: 'From a file' },
+    { id: 'file', icon: Upload, label: 'From a CV' },
     { id: 'linkedin', icon: LinkedInIcon, label: 'From LinkedIn' },
   ] },
 ]
+const TABS = NAV.flatMap(g => g.items.map(i => i.id))
+const tabOf = t => (TABS.includes(t) ? t : 'blank')
+
+// A template's design for a new resume, keeping the document settings (language, dates, page size) of the usual design.
+function designFor(templateId, usual) {
+  if (templateId === usual.templateId) return usual
+  const t = TEMPLATES.find(x => x.id === templateId) ?? TEMPLATES.find(x => x.id === DEFAULT_TEMPLATE_ID)
+  const kept = Object.fromEntries(KEEP_ON_TEMPLATE.map(k => [k, usual[k]]))
+  return { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(t.settings), ...kept, templateId: t.id }
+}
 
 export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }) {
-  const { createResume, addResume, resumes, currentId } = useStore()
+  const { createResume, addResume, resumes } = useStore()
+  const vault = useStore(s => s.vault)
+  const usual = useStore.getState().newDesign()
   const labels = useLabels()
-  const [tab, setTab] = useState(initialTab)
+  const [tab, setTab] = useState(tabOf(initialTab))
   const [name, setName] = useState('')
   const [label, setLabel] = useState('')
-  const [copyId, setCopyId] = useState(currentId ?? resumes[0]?.id ?? null)
   const [imp, setImp] = useState({ status: 'idle' }) // idle | reading | ready | error — per import tab
-  const [keep, setKeep] = useState({ layout: true, design: true })
+  const [templateId, setTemplateId] = useState(usual.templateId ?? DEFAULT_TEMPLATE_ID) // imports: a template id or 'original'
   const [jd, setJd] = useState({ text: '', pages: 1, status: 'idle', steps: [] }) // job tab
+  const [pages, setPages] = useState(1) // vault tab
+  const hasData = vaultHasContent(vault)
 
-  useEffect(() => { setTab(initialTab) }, [initialTab])
+  useEffect(() => { setTab(tabOf(initialTab)) }, [initialTab])
+  useEffect(() => { useStore.getState().syncVault() }, [])
   // Switching between import pages starts over.
   useEffect(() => { setImp({ status: 'idle' }) }, [tab])
 
   const importing = tab === 'file' || tab === 'linkedin'
-  const copySource = resumes.find(r => r.id === copyId)
+  const needsData = (tab === 'job' || tab === 'vault') && !hasData
 
   const readFile = async file => {
     if (!file) return
@@ -65,14 +81,13 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
 
   const placeholder = {
     blank: `Resume ${resumes.length + 1}`,
-    sample: 'Sample resume',
-    copy: copySource ? `${copySource.name.replace(/\s*\(v\d+\)$/, '')} (v2)` : 'New version',
+    vault: vault.profile?.fullName ? `${vault.profile.fullName} – full resume` : 'Full resume',
     file: imp.file ? imp.file.name.replace(/\.[^.]+$/, '') : 'Name of the imported resume',
     linkedin: imp.status === 'ready' ? imp.build().name : 'LinkedIn import',
     job: 'Job title – Company (from the job)',
   }[tab]
 
-  const canCreate = importing ? imp.status === 'ready' : tab === 'job' ? jd.text.trim().length >= 80 && jd.status !== 'running' : tab !== 'copy' || !!copySource
+  const canCreate = needsData ? false : importing ? imp.status === 'ready' : tab === 'job' ? jd.text.trim().length >= 80 && jd.status !== 'running' : true
 
   // Sync the vault → read the job → pick vault content → tailor it → build → score against the job.
   const buildFromJob = async () => {
@@ -128,14 +143,22 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
     if (tab === 'job') { buildFromJob(); return }
     const finalName = name.trim()
     let id
-    if (importing) {
-      // New resumes use the usual design; an imported file's own layout/design go on top only if kept.
-      const design = useStore.getState().newDesign()
-      const built = imp.linkedin ? { ...imp.build(), settings: design } : imp.build({ ...keep, base: design })
+    if (tab === 'vault') {
+      // Everything in the vault, no job and no AI: the usual design, contact details from the vault profile.
+      useStore.getState().syncVault()
+      const { vault: v, resumes: all } = useStore.getState()
+      const plan = planFromVault({ vault: v, composition: wholeVaultComposition(v, { pages }) })
+      const { resume } = buildFromVault({ vault: v, resumes: all, plan, tailored: null, settings: usual, name: finalName || placeholder, label: label.trim() })
+      id = addResume(resume)
+    } else if (importing) {
+      // The chosen template, or the file's own layout and design ("original") on top of the usual design.
+      const built = templateId === 'original'
+        ? imp.build({ layout: true, design: true, base: usual })
+        : { ...imp.build({ layout: false, design: false, base: usual }), settings: designFor(templateId, usual) }
       id = addResume({ ...built, name: finalName || placeholder, label: label.trim() })
+    } else {
+      id = createResume({ from: tab, name: finalName, label: label.trim() })
     }
-    else if (tab === 'copy') id = createResume({ from: 'copy', sourceId: copyId, name: finalName, label: label.trim() || copySource?.label || '' })
-    else id = createResume({ from: tab, name: finalName, label: label.trim() })
     onCreated?.(id)
   }
 
@@ -172,32 +195,10 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
           {tab === 'blank' && (
             <Intro title="Blank resume" text="Start with empty Profile, Education, Skills and Experience sections and the default design. Add more sections any time from the editor." />
           )}
-          {tab === 'sample' && (
-            <Intro title="From sample" text="Start from an example resume to see how sections, entries and designs work, then replace the content with your own." />
-          )}
-          {tab === 'copy' && (
-            <>
-              <Intro title="Copy a resume" text="Make a new version of an existing resume — same content and design — to tailor for a specific role." />
-              {resumes.length ? (
-                <div className="mt-5 max-h-80 space-y-1.5 overflow-auto pr-1">
-                  {[...resumes].sort((a, b) => b.updatedAt - a.updatedAt).map(r => (
-                    <label key={r.id} className={clsx('flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 transition',
-                      copyId === r.id ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-slate-300')}>
-                      <input type="radio" name="copy" className="accent-[var(--color-brand)]" checked={copyId === r.id} onChange={() => setCopyId(r.id)} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-ink">{r.name}</span>
-                        <span className="text-[12px] text-muted">Edited {new Date(r.updatedAt).toLocaleDateString()}</span>
-                      </span>
-                      <LabelChip label={r.label} />
-                    </label>
-                  ))}
-                </div>
-              ) : <p className="mt-5 text-muted">There are no resumes to copy yet.</p>}
-            </>
-          )}
+          {tab === 'vault' && (needsData ? <NeedsData onPick={setTab} /> : <FromVault vault={vault} pages={pages} setPages={setPages} />)}
           {tab === 'file' && (
             <>
-              <Intro title="Import from a file" text="Bring in an existing resume. Text, layout and design are read separately, so you can keep or drop each." />
+              <Intro title="Import a CV" text="Bring in an existing resume (PDF, Word, text or a JSON backup), then choose its template." />
               <DropZone imp={imp} onFile={readFile} accept={ACCEPT} hint="PDF · Word (.docx) · TXT / Markdown · JSON backup" />
             </>
           )}
@@ -220,18 +221,19 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
             </>
           )}
 
-          {tab === 'job' && <FromJob jd={jd} setJd={setJd} />}
+          {tab === 'job' && (needsData ? <NeedsData onPick={setTab} job /> : <FromJob jd={jd} setJd={setJd} />)}
 
-          {importing && imp.status === 'ready' && <ImportSummary imp={imp} keep={keep} setKeep={setKeep} />}
+          {importing && imp.status === 'ready' && <ImportSummary imp={imp} templateId={templateId} setTemplateId={setTemplateId} />}
 
-          <div className="mt-7 grid gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2">
+          {!needsData && <>
+          <div className="mt-7 grid gap-4 border-t border-rule pt-6 sm:grid-cols-2">
             <div>
               <label className="label">Name</label>
               <input className="field" value={name} placeholder={placeholder} onChange={e => setName(e.target.value)} />
             </div>
             <div>
               <label className="label">Label <span className="font-normal text-muted">(optional)</span></label>
-              <input className="field" list="create-labels" value={label} maxLength={40} placeholder={tab === 'copy' && copySource?.label ? copySource.label : 'e.g. b2c - google'} onChange={e => setLabel(e.target.value)} />
+              <input className="field" list="create-labels" value={label} maxLength={40} placeholder="e.g. b2c - google" onChange={e => setLabel(e.target.value)} />
               <datalist id="create-labels">{labels.map(l => <option key={l} value={l} />)}</datalist>
             </div>
           </div>
@@ -240,9 +242,10 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
             <button type="button" onClick={onCancel} className="rounded-md px-5 py-2.5 font-medium text-muted hover:bg-field hover:text-ink">Cancel</button>
             <button type="submit" disabled={!canCreate}
               className="rounded-md bg-ink px-7 py-2.5 text-[15px] font-medium text-white transition hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-40">
-              {tab === 'job' ? (jd.status === 'running' ? 'Building…' : 'Build from vault') : importing ? 'Create from import' : tab === 'copy' ? 'Create copy' : 'Create resume'}
+              {tab === 'job' ? (jd.status === 'running' ? 'Building…' : 'Build for this job') : tab === 'vault' ? 'Create from vault' : importing ? 'Create from import' : 'Create resume'}
             </button>
           </div>
+          </>}
         </form>
       </div>
     </div>
@@ -358,11 +361,15 @@ function DropZone({ imp, onFile, accept, hint }) {
   )
 }
 
-function ImportSummary({ imp, keep, setKeep }) {
-  const { summary, source, layout, design } = imp
+function ImportSummary({ imp, templateId, setTemplateId }) {
+  const { summary, source } = imp
   const entries = summary.sections.reduce((n, s) => n + s.count, 0)
+  // Previews of the imported resume: as the file designed it, and in each template.
+  const hasOriginal = !imp.linkedin && (!!imp.design || imp.source === 'json')
+  const original = useMemo(() => (hasOriginal ? imp.build({ layout: true, design: true }) : null), [imp, hasOriginal])
+  const plain = useMemo(() => (imp.linkedin ? imp.build() : imp.build({ layout: false, design: false })), [imp])
   return (
-    <div className="mt-4 space-y-2 text-[14px]">
+    <div className="mt-4 space-y-3 text-[14px]">
       <Layer icon={Type} title="Text" status={<><CheckCircle2 size={15} className="text-emerald-600" /> {summary.sections.length} sections · {entries} entries</>}>
         <dl className="grid grid-cols-[64px_1fr] gap-x-3 gap-y-0.5">
           <dt className="text-muted">Name</dt><dd className="truncate text-ink">{summary.name || <i className="text-muted">not found</i>}</dd>
@@ -374,65 +381,106 @@ function ImportSummary({ imp, keep, setKeep }) {
             {summary.sections.map((s, i) => {
               const Icon = SECTION_TYPES[s.type].icon
               return (
-                <span key={i} className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] text-ink ring-1 ring-slate-200">
-                  <Icon size={13} /> {s.heading} <span className="text-muted">{s.count}</span>
+                <span key={i} className="flex items-center gap-1.5 rounded-md bg-white px-2 py-0.5 text-[12px] text-ink ring-1 ring-rule">
+                  <Icon size={12} /> {s.heading} <span className="meta text-muted">{s.count}</span>
                 </span>
               )
             })}
           </div>
         )}
       </Layer>
-      {layout && (
-        <Layer icon={LayoutTemplate} title="Layout" toggle={keep.layout} onToggle={v => setKeep(k => ({ ...k, layout: v }))}>
-          <Notes notes={layout.notes} off={!keep.layout} offText="Your usual layout" />
-        </Layer>
-      )}
-      {design && (
-        <Layer icon={Palette} title="Design" toggle={keep.design} onToggle={v => setKeep(k => ({ ...k, design: v }))}>
-          <Notes notes={design.notes} off={!keep.design} offText="Your usual design" />
-          {keep.design && <Swatches s={design.settings} />}
-        </Layer>
-      )}
+
+      <div className="rounded-lg border border-rule p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Palette size={16} className="text-ink" />
+          <span className="font-semibold text-ink">Template</span>
+          <span className="ml-auto text-[12px] text-muted">Change it any time in Design</span>
+        </div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(178px,1fr))] gap-x-3 gap-y-4">
+          {hasOriginal && (
+            <TemplateCard resume={original} template={{ id: 'original', name: 'Original', style: source === 'json' ? 'As saved in the backup' : 'Layout and design from the file', settings: original.settings }}
+              active={templateId === 'original'} onApply={() => setTemplateId('original')} />
+          )}
+          {TEMPLATES.map(t => <TemplateCard key={t.id} resume={plain} template={t} active={templateId === t.id} onApply={() => setTemplateId(t.id)} />)}
+        </div>
+      </div>
       {source !== 'json' && (
-        <p className="px-1 text-[12px] text-muted">Imports are read automatically — give each section a quick check after creating.</p>
+        <p className="px-1 text-[12px] text-muted">Imports are read automatically. Give each section a quick check after creating.</p>
       )}
     </div>
   )
 }
 
-function Layer({ icon: Icon, title, status, toggle, onToggle, children }) {
+// Tailoring and building from the vault need something in it first.
+function NeedsData({ onPick, job }) {
+  return (
+    <>
+      <Intro title={job ? 'From a job description' : 'From your vault'} text={job
+        ? 'To tailor a resume to a job, the app needs your experience first: your roles, projects and achievements. Add them once; every tailored resume is built from them.'
+        : 'Your vault is empty. It fills up from your resumes, so bring in an existing CV or your LinkedIn profile first.'} />
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {[
+          ['file', Upload, 'Import a CV', 'PDF or Word. Everything goes into your vault.'],
+          ['linkedin', LinkedInIcon, 'Import from LinkedIn', 'Profile PDF or data export.'],
+          ['blank', FilePlus2, 'Write it yourself', 'Start a blank resume and fill in your experience.'],
+        ].map(([id, Icon, title, text]) => (
+          <button key={id} type="button" onClick={() => onPick(id)} className="rounded-lg border border-rule bg-white p-4 text-left transition hover:border-ink/40">
+            <Icon size={18} className="text-brand" />
+            <p className="mt-2 font-medium text-ink">{title}</p>
+            <p className="mt-1 text-[13px] text-muted">{text}</p>
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+// A complete resume from everything in the vault, no job and no AI.
+function FromVault({ vault, pages, setPages }) {
+  const count = kind => vault.items.filter(i => i.kind === kind).length
+  const roles = vault.items.filter(i => i.kind === 'experience').reduce((n, i) => n + Math.max(1, i.roles.length), 0)
+  const bullets = vault.items.reduce((n, i) => n + (i.kind === 'skills' ? 0 : i.bullets.length), 0)
+  const p = vault.profile ?? {}
+  return (
+    <>
+      <Intro title="From your vault" text="A complete resume from everything in your vault: every company and role with its strongest bullets, your projects, education, certifications and skills, and your profile. It uses your usual design. No AI and no job needed." />
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-4">
+        {[['Companies', count('experience')], ['Roles', roles], ['Bullets', bullets], ['Projects', count('projects')]].map(([k, v]) => (
+          <div key={k} className="bg-white px-4 py-3">
+            <p className="meta uppercase tracking-[0.08em] text-muted">{k}</p>
+            <p className="display text-[28px] leading-tight text-ink">{v}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[13px] text-muted">
+        Contact details: {p.fullName || p.email ? [p.fullName, p.email, p.phone].filter(Boolean).join(' · ') : 'none in your vault profile yet (you can add them in the Vault)'}
+        {p.headlines?.[0] && <> · Title: {p.headlines[0]}</>}
+      </p>
+      <div className="mt-4 flex items-center gap-3">
+        <span className="label mb-0">Length</span>
+        <div className="flex overflow-hidden rounded-md border border-rule bg-white">
+          {[1, 2].map((n, i) => (
+            <button key={n} type="button" onClick={() => setPages(n)} className={clsx('px-4 py-1.5 text-[14px]', i > 0 && 'border-l border-rule', pages === n ? 'bg-ink text-white' : 'text-body hover:bg-field')}>
+              {n === 1 ? 'Concise' : 'Detailed'}
+            </button>
+          ))}
+        </div>
+        <span className="text-[12px] text-muted">{pages === 1 ? 'Up to 4 bullets for recent roles, 2 for older ones' : 'Up to 6 bullets for recent roles, 4 for older ones'}</span>
+      </div>
+    </>
+  )
+}
+
+function Layer({ icon: Icon, title, status, children }) {
   return (
     <div className="rounded-lg bg-soft p-3.5">
       <div className="mb-1.5 flex items-center gap-2">
         <Icon size={16} className="text-ink" />
         <span className="font-semibold text-ink">{title}</span>
         {status && <span className="ml-auto flex items-center gap-1 text-[13px] text-muted">{status}</span>}
-        {onToggle && (
-          <label className="ml-auto flex cursor-pointer items-center gap-2 text-[13px] text-muted">
-            Keep original
-            <input type="checkbox" checked={toggle} onChange={e => onToggle(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand)]" />
-          </label>
-        )}
       </div>
       {children}
     </div>
   )
 }
 
-function Notes({ notes, off, offText }) {
-  if (off) return <p className="text-[13px] text-muted">{offText}</p>
-  return <ul className="space-y-0.5 text-[13px] text-ink">{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
-}
-
-function Swatches({ s }) {
-  const colors = [['Text', s.text], ['Accent', s.accent], ['Page', s.bg], ...(s.colorMode === 'multi' ? [['Sidebar', s.bg2], ['Sidebar text', s.text2]] : [])].filter(([, c]) => c)
-  return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {colors.map(([label, c]) => (
-        <span key={label} className="flex items-center gap-1.5 text-[12px] text-muted">
-          <span className="h-4 w-4 rounded-full ring-1 ring-black/10" style={{ background: c }} /> {label}
-        </span>
-      ))}
-    </div>
-  )
-}

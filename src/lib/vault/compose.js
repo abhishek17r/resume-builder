@@ -67,6 +67,38 @@ const listHtml = bullets => (bullets.length ? `<ul>${bullets.map(b => `<li>${b.h
 // Newest first; no end date means current.
 const byRecency = (a, b) => (b.endDate || '9999').localeCompare(a.endDate || '9999') || (b.startDate || '').localeCompare(a.startDate || '')
 
+// A whole resume from the vault without a job or AI: every company and role (its strongest bullets,
+// in their original order), every project and other entry, all skills, the first summary and headline.
+export function wholeVaultComposition(vault, { pages = 1 } = {}) {
+  const { byBullet } = scoreVault(vault)
+  const best = (bullets, n) => {
+    const keep = new Set([...bullets].sort((a, b) => (byBullet[b.id]?.score ?? 0) - (byBullet[a.id]?.score ?? 0)).slice(0, n).map(b => b.id))
+    return bullets.filter(b => keep.has(b.id)).map(b => b.id)
+  }
+  const end = r => r?.end || '9999'
+  const experience = vault.items.filter(i => i.kind === 'experience')
+    .flatMap(i => (i.roles.length ? i.roles : [null]).map(role => ({ item: i, role })))
+    .sort((a, b) => end(b.role).localeCompare(end(a.role)))
+  const entries = experience.map(({ item, role }, n) => ({
+    itemRef: item.id,
+    roleTitle: role?.title ?? '',
+    bulletRefs: best(item.bullets.filter(b => !role || !b.role || norm(b.role) === norm(role.title)), n < 2 ? (pages > 1 ? 6 : 4) : pages > 1 ? 4 : 2),
+  }))
+  for (const item of vault.items.filter(i => ['projects', 'organisations', 'publications', 'awards', 'certificates', 'courses'].includes(i.kind))) {
+    entries.push({ itemRef: item.id, roleTitle: item.roles[0]?.title ?? '', bulletRefs: best(item.bullets, pages > 1 ? 3 : 2) })
+  }
+  return {
+    entries,
+    skillRefs: vault.items.filter(i => i.kind === 'skills' && !isSpoken(i)).flatMap(i => i.bullets.map(b => b.id)),
+    summaryRef: vault.items.find(i => i.kind === 'summaries')?.bullets[0]?.id ?? '',
+    headline: vault.profile?.headlines?.[0] ?? '',
+    gaps: [],
+  }
+}
+
+// Enough in the vault to build a resume from: at least one company or project with bullets.
+export const vaultHasContent = vault => (vault?.items ?? []).some(i => (i.kind === 'experience' || i.kind === 'projects') && i.bullets.length)
+
 // Which vault content goes in: the AI's picks plus every company/role it left out (strongest bullets).
 export function planFromVault({ vault, composition }) {
   const items = new Map(vault.items.map(i => [i.id, i]))

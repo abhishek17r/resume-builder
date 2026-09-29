@@ -44,6 +44,14 @@ export default function App() {
     const t = setTimeout(() => useStore.getState().syncVault(), 800)
     return () => clearTimeout(t)
   }, [resumes, hydrated])
+  // …and periodically, and when you come back to the tab, so the vault stays deduplicated.
+  useEffect(() => {
+    if (!hydrated) return
+    const sync = () => { if (document.visibilityState === 'visible') useStore.getState().syncVault() }
+    const t = setInterval(sync, 60_000)
+    document.addEventListener('visibilitychange', sync)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', sync) }
+  }, [hydrated])
 
   useEffect(() => {
     history.replaceState(null, '', view === 'new' ? `#new/${createTab}` : `#${view}`)
@@ -110,7 +118,7 @@ export default function App() {
           Couldn’t save your latest changes ({saveError}). Export your resume as JSON from the ⋯ menu to keep a copy.
         </div>
       )}
-      <Sidebar view={editing ? view : view === 'new' ? 'new' : view === 'vault' ? 'vault' : 'overview'} setView={setView} openCreate={openCreate} />
+      <Sidebar view={editing ? view : view === 'new' ? 'new' : view === 'vault' ? 'vault' : 'overview'} setView={setView} openCreate={openCreate} createTab={createTab} />
 
       {!editing ? (
         <div className="min-w-0 flex-1">{page}</div>
