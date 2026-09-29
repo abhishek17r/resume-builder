@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   ArrowLeft, FilePlus2, Copy, Sparkles, Upload, FileText, Loader2, AlertCircle, CheckCircle2,
@@ -12,9 +12,6 @@ import { LinkedInIcon } from './BrandIcons'
 import { post, health } from '../lib/api'
 import { composePayload, planFromVault, tailorPayload, buildFromVault } from '../lib/vault/compose'
 import { jobScore } from '../lib/optimize/jobScore'
-import { TEMPLATES } from '../lib/templates'
-import { sampleResume } from '../lib/defaults'
-import { TemplateCard } from './TemplateGallery'
 import { resumeToPayload } from '../lib/optimize/serialize'
 
 // Page nav: two groups, each item a page of its own.
@@ -42,7 +39,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
   const [copyId, setCopyId] = useState(currentId ?? resumes[0]?.id ?? null)
   const [imp, setImp] = useState({ status: 'idle' }) // idle | reading | ready | error — per import tab
   const [keep, setKeep] = useState({ layout: true, design: true })
-  const [jd, setJd] = useState(() => ({ text: '', pages: 1, status: 'idle', steps: [], templateId: resumes.find(r => r.id === currentId)?.settings?.templateId ?? TEMPLATES[0].id })) // job tab
+  const [jd, setJd] = useState({ text: '', pages: 1, status: 'idle', steps: [] }) // job tab
 
   useEffect(() => { setTab(initialTab) }, [initialTab])
   // Switching between import pages starts over.
@@ -105,8 +102,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
       const { tailored } = await post('/api/resume/tailor', { analysis, ...tailorPayload(plan, vault) })
       const company = analysis.company?.trim()
       const finalName = name.trim() || [analysis.title, company].filter(Boolean).join(' – ') || 'Tailored resume'
-      const template = TEMPLATES.find(t => t.id === jd.templateId) ?? TEMPLATES[0]
-      const { resume, changes } = buildFromVault({ vault, resumes: all, plan, tailored, template, name: finalName, label: label.trim() || (company ? company.toLowerCase() : '') })
+      const { resume, changes } = buildFromVault({ vault, resumes: all, plan, tailored, settings: useStore.getState().newDesign(), name: finalName, label: label.trim() || (company ? company.toLowerCase() : '') })
       const reworded = changes.filter(c => c.kind === 'bullet').length
       finish(`${reworded} bullet${reworded === 1 ? '' : 's'} lightly reworded${changes.some(c => c.kind === 'summary') ? ' · new summary' : ''}${changes.some(c => c.kind === 'title') ? ' · new title' : ''}`)
 
@@ -132,7 +128,12 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
     if (tab === 'job') { buildFromJob(); return }
     const finalName = name.trim()
     let id
-    if (importing) id = addResume({ ...imp.build(keep), name: finalName || placeholder, label: label.trim() })
+    if (importing) {
+      // New resumes use the usual design; an imported file's own layout/design go on top only if kept.
+      const design = useStore.getState().newDesign()
+      const built = imp.linkedin ? { ...imp.build(), settings: design } : imp.build({ ...keep, base: design })
+      id = addResume({ ...built, name: finalName || placeholder, label: label.trim() })
+    }
     else if (tab === 'copy') id = createResume({ from: 'copy', sourceId: copyId, name: finalName, label: label.trim() || copySource?.label || '' })
     else id = createResume({ from: tab, name: finalName, label: label.trim() })
     onCreated?.(id)
@@ -252,7 +253,6 @@ function FromJob({ jd, setJd }) {
   const vault = useStore(s => s.vault)
   const syncVault = useStore(s => s.syncVault)
   const [server, setServer] = useState(null)
-  const preview = useMemo(() => sampleResume(), [])
   useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const bullets = vault.items.reduce((n, i) => n + i.bullets.length, 0)
   const running = jd.status === 'running'
@@ -275,16 +275,6 @@ function FromJob({ jd, setJd }) {
               className={clsx('rounded-md px-4 py-1.5 text-[14px] font-medium', jd.pages === n ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink')}>
               {n} page{n > 1 ? 's' : ''}
             </button>
-          ))}
-        </div>
-      </div>
-      <div className="mt-5">
-        <p className="label">Template</p>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
-          {TEMPLATES.map(t => (
-            <div key={t.id} className={running ? 'pointer-events-none opacity-60' : ''}>
-              <TemplateCard resume={preview} template={t} active={jd.templateId === t.id} onApply={tpl => setJd(j => ({ ...j, templateId: tpl.id }))} />
-            </div>
           ))}
         </div>
       </div>
@@ -394,18 +384,13 @@ function ImportSummary({ imp, keep, setKeep }) {
       </Layer>
       {layout && (
         <Layer icon={LayoutTemplate} title="Layout" toggle={keep.layout} onToggle={v => setKeep(k => ({ ...k, layout: v }))}>
-          <Notes notes={layout.notes} off={!keep.layout} offText="Default two-column layout" />
+          <Notes notes={layout.notes} off={!keep.layout} offText="Your usual layout" />
         </Layer>
       )}
       {design && (
         <Layer icon={Palette} title="Design" toggle={keep.design} onToggle={v => setKeep(k => ({ ...k, design: v }))}>
-          <Notes notes={design.notes} off={!keep.design} offText="Default design" />
+          <Notes notes={design.notes} off={!keep.design} offText="Your usual design" />
           {keep.design && <Swatches s={design.settings} />}
-        </Layer>
-      )}
-      {imp.linkedin && (
-        <Layer icon={Palette} title="Design">
-          <p className="text-[13px] text-ink">A clean one-column design is applied — change it any time in Customize.</p>
         </Layer>
       )}
       {source !== 'json' && (

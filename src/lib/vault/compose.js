@@ -1,4 +1,4 @@
-import { uid, blankEntry, DEFAULT_SETTINGS } from '../defaults'
+import { uid, blankEntry } from '../defaults'
 import { SECTION_TYPES } from '../sections'
 import { entityOf, itemKey, norm, fingerprint, SPOKEN_LANGUAGES } from './sync'
 import { scoreVault } from './score'
@@ -148,9 +148,9 @@ const LEFT = new Set(['profile', 'education', 'skills', 'languages', 'awards', '
 
 /**
  * Build the resume: tailored text where the tailoring step changed it, vault text otherwise; contact
- * details only from the vault profile; design from the chosen template. Returns { resume, changes }.
+ * details only from the vault profile; design = `settings` (the app's design for new resumes). Returns { resume, changes }.
  */
-export function buildFromVault({ vault, resumes, plan, tailored, template, name, label }) {
+export function buildFromVault({ vault, resumes, plan, tailored, settings, name, label }) {
   const sources = [...resumes].sort((a, b) => b.updatedAt - a.updatedAt)
   const textOf = new Map((tailored?.bullets ?? []).map(b => [b.ref, b.text]))
   const composed = {}
@@ -215,7 +215,7 @@ export function buildFromVault({ vault, resumes, plan, tailored, template, name,
 
   const resume = {
     id: uid(), name, label, updatedAt: Date.now(), personal, sections, optimize: {},
-    settings: { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(template.settings), templateId: template.id },
+    settings: structuredClone(settings),
     // Tailored wording stays on this resume: sync links it back to the vault bullet it came from instead
     // of adding a near-duplicate, and skips the generated summary, headline and skills.
     vaultLinks: links,

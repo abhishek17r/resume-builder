@@ -49,15 +49,17 @@ export async function importResumeFile(file) {
   const layout = analyzeLayout(doc, lines)
   const design = analyzeDesign(doc, lines)
 
-  const build = ({ layout: useLayout = true, design: useDesign = true } = {}) => {
+  // `base`: the design to start from (the app's default for new resumes); the file's layout/design go on top if kept.
+  const build = ({ layout: useLayout = true, design: useDesign = true, base } = {}) => {
     const resume = structuredClone(text)
-    const settings = { ...DEFAULT_SETTINGS, applyAccent: { ...DEFAULT_SETTINGS.applyAccent } }
+    const settings = base ? structuredClone(base) : { ...DEFAULT_SETTINGS, applyAccent: { ...DEFAULT_SETTINGS.applyAccent } }
     if (useLayout) Object.assign(settings, layout.settings)
     else resume.sections.forEach(s => { s.column = TYPE_COLUMN(s.type) })
     if (useDesign) {
       const { applyAccent, ...rest } = design.settings
       Object.assign(settings, rest)
       if (applyAccent) settings.applyAccent = { ...settings.applyAccent, ...applyAccent }
+      delete settings.templateId // the file's own design, not a template
     }
     resume.settings = settings
     return resume

@@ -6,6 +6,7 @@ import { idbStorage } from './storage'
 import { SECTION_TYPES } from './sections'
 import { applyEditTo } from './optimize/apply'
 import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint, norm } from './vault/sync'
+import { defaultDesign } from './templates'
 
 const HISTORY_LIMIT = 100
 const COALESCE_MS = 600
@@ -35,8 +36,24 @@ export const useStore = create(
 
       const section = (r, id) => r.sections.find(s => s.id === id)
 
+      // The design for new resumes: whatever was last set in Customize, or Scholar until then.
+      const newDesign = () => {
+        const d = get().designDefaults ?? defaultDesign()
+        return { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(d), applyAccent: { ...DEFAULT_SETTINGS.applyAccent, ...d.applyAccent } }
+      }
+      // A settings change also becomes the design for the next new resume.
+      const mutateSettings = (fn, key) => {
+        mutate(fn, key)
+        const r = get().current()
+        if (r) set({ designDefaults: structuredClone(r.settings) })
+      }
+
+      first.settings = { ...first.settings, ...defaultDesign() }
+
       return {
         resumes: [first],
+        designDefaults: null,
+        newDesign,
         currentId: first.id,
         past: [],
         future: [],
@@ -83,6 +100,7 @@ export const useStore = create(
           } else {
             r = from === 'sample' ? sampleResume() : blankResume()
             r.name = name || `Resume ${state.resumes.length + 1}`
+            r.settings = newDesign()
           }
           if (label !== undefined) r.label = label
           set({ resumes: [...state.resumes, r], currentId: r.id, past: [], future: [] })
@@ -174,12 +192,12 @@ export const useStore = create(
         }),
 
         // ----- settings -----
-        setSetting: (key, value) => mutate(r => { r.settings[key] = value }, `setting.${key}`),
-        setAccentTarget: (key, value) => mutate(r => { r.settings.applyAccent[key] = value }),
-        resetSettings: () => mutate(r => { r.settings = structuredClone(DEFAULT_SETTINGS) }),
-        applyPreset: preset => mutate(r => { Object.assign(r.settings, structuredClone(preset)) }),
+        setSetting: (key, value) => mutateSettings(r => { r.settings[key] = value }, `setting.${key}`),
+        setAccentTarget: (key, value) => mutateSettings(r => { r.settings.applyAccent[key] = value }),
+        resetSettings: () => mutateSettings(r => { r.settings = { ...defaultDesign(), language: r.settings.language } }),
+        applyPreset: preset => mutateSettings(r => { Object.assign(r.settings, structuredClone(preset)) }),
         // A template replaces the whole look: design settings go back to defaults, then the template applies.
-        applyTemplate: (template, keepKeys) => mutate(r => {
+        applyTemplate: (template, keepKeys) => mutateSettings(r => {
           const kept = Object.fromEntries(keepKeys.map(k => [k, r.settings[k]]))
           r.settings = { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(template.settings), ...kept, templateId: template.id }
         }),
@@ -279,7 +297,7 @@ export const useStore = create(
     {
       name: 'resume-builder',
       storage: createJSONStorage(() => idbStorage),
-      partialize: s => ({ resumes: s.resumes, currentId: s.currentId, vault: s.vault }),
+      partialize: s => ({ resumes: s.resumes, currentId: s.currentId, vault: s.vault, designDefaults: s.designDefaults }),
       // Fill in any settings added after a resume was first saved.
       merge: (persisted, current) => {
         const merged = { ...current, ...persisted }

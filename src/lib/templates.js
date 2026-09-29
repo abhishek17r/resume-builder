@@ -1,3 +1,5 @@
+import { DEFAULT_SETTINGS } from './defaults'
+
 // Design templates: ten distinct looks. Each differs in structure (columns, header placement,
 // entry layout, heading treatment) and typography — not just colour. Applying one replaces the
 // design settings; content is never touched. Colours can be changed afterwards in Customize.
@@ -97,3 +99,10 @@ export const TEMPLATES = [
 
 // Settings a template never changes (they're about the document, not its look).
 export const KEEP_ON_TEMPLATE = ['language', 'dateFormat', 'pageFormat', 'showPhoto']
+
+// The design every new resume starts with until someone customises one: Scholar.
+export const DEFAULT_TEMPLATE_ID = 'scholar'
+export function defaultDesign() {
+  const t = TEMPLATES.find(x => x.id === DEFAULT_TEMPLATE_ID)
+  return { ...structuredClone(DEFAULT_SETTINGS), ...structuredClone(t.settings), templateId: t.id }
+}
