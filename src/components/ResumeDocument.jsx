@@ -150,6 +150,8 @@ function sectionBlocks(section, ctx, tone, narrow) {
     el: <Heading ctx={ctx} tone={tone} icon={def.icon}>{section.heading}</Heading>,
   }]
 
+  if (type === 'skills') return [...blocks, ...skillBlocks(section, entries, ctx, tone, narrow, E)]
+
   entries.forEach((e, i) => {
     const k = `${section.id}.${e.id}`
     const gap = i === 0 ? 0 : E
@@ -543,15 +545,75 @@ function Heading({ ctx, tone, icon: Icon, children }) {
   )
 }
 
-function Level({ level, color }) {
-  if (!(level >= 0)) return null
+// A skill level (0-4) as dots, a bar or a word, per the 'skillLevel' setting.
+function Level({ level, color, style = 'dots', inline = false }) {
+  if (!(level >= 0) || style === 'hidden') return null
+  const wrap = inline ? { display: 'inline-flex', marginLeft: '2mm', verticalAlign: 'middle' } : { display: 'flex', marginTop: '1mm' }
+  if (style === 'text') return <span style={{ ...wrap, opacity: 0.75, fontSize: '0.92em' }}>{LEVELS[level]}</span>
+  if (style === 'bar') {
+    return (
+      <span style={{ ...wrap, width: inline ? '14mm' : '100%', maxWidth: '32mm', height: '1.1mm', borderRadius: '0.6mm', background: `color-mix(in srgb, ${color} 18%, transparent)`, overflow: 'hidden' }}>
+        <span style={{ width: `${((level + 1) / 5) * 100}%`, background: color, borderRadius: '0.6mm' }} />
+      </span>
+    )
+  }
   return (
-    <div style={{ display: 'flex', gap: '1mm', marginTop: '1mm' }}>
+    <span style={{ ...wrap, gap: '1mm' }}>
       {[0, 1, 2, 3, 4].map(i => (
         <span key={i} style={{ width: '2.2mm', height: '2.2mm', borderRadius: '50%', background: i <= level ? color : 'transparent', border: `0.3mm solid ${color}` }} />
       ))}
-    </div>
+    </span>
   )
+}
+
+// ---------- skills: stacked, inline, tags, bullets or table, in 1-4 columns ----------
+const skillItems = info => (info || '').split(/\s*[,;|•·]\s*/).map(x => x.trim()).filter(Boolean)
+const grid = cols => ({ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, columnGap: '6mm', rowGap: '1.2mm' })
+const chunk = (list, n) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n))
+
+function skillBlocks(section, entries, ctx, tone, narrow, E) {
+  const { s } = ctx
+  const layout = s.skillsLayout ?? 'stacked'
+  const cols = layout === 'table' ? 1 : Math.max(1, Math.min(narrow ? 2 : 4, s.skillsColumns ?? 1))
+  const k = section.id
+  const titleColor = s.applyAccent.entryTitle ? tone.accent : tone.text
+
+  if (layout === 'bullets') {
+    // Each group: its name, then its skills as bullets across the columns. One block per row of bullets.
+    const out = []
+    entries.forEach((e, gi) => {
+      const items = skillItems(e.info)
+      const name = e.skill
+      if (!items.length) {
+        out.push({ key: `${k}.${e.id}`, gap: gi ? E : 0, el: <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2mm' }}><span>• {name}</span><Level level={e.level} color={tone.accent} style={s.skillLevel} inline /></div> })
+        return
+      }
+      if (name) out.push({ key: `${k}.${e.id}.n`, gap: gi ? E : 0, keep: true, el: <div style={{ fontWeight: 700, fontSize: 'var(--fs-entry)', color: titleColor }}>{name}</div> })
+      chunk(items, cols).forEach((row, ri) => out.push({
+        key: `${k}.${e.id}.${ri}`, gap: ri || name ? 0.6 : gi ? E : 0,
+        el: <div style={grid(cols)}>{row.map(item => <div key={item} style={{ display: 'flex', gap: '1.6mm' }}><span style={{ color: tone.accent }}>•</span><span>{item}</span></div>)}</div>,
+      }))
+    })
+    return out
+  }
+
+  if (layout === 'table') {
+    return entries.map((e, i) => ({
+      key: `${k}.${e.id}`, gap: i ? E * 0.7 : 0,
+      el: (
+        <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'minmax(22%, max-content) 1fr', columnGap: '5mm', rowGap: '0.4mm', alignItems: 'baseline' }}>
+          <div style={{ fontWeight: 700, color: titleColor }}>{e.skill}</div>
+          <div>{e.info}<Level level={e.level} color={tone.accent} style={s.skillLevel} inline={!!e.info} /></div>
+        </div>
+      ),
+    }))
+  }
+
+  // stacked / inline / tags: the groups themselves across the columns, one block per row.
+  return chunk(entries, cols).map((row, ri) => ({
+    key: `${k}.r${ri}`, gap: ri ? E : 0,
+    el: <div style={cols > 1 ? grid(cols) : undefined}>{row.map(e => <SkillEntry key={e.id} e={e} type="skills" ctx={ctx} tone={tone} layout={layout} />)}</div>,
+  }))
 }
 
 function maybeLink(text, href, showIcon) {
@@ -565,17 +627,44 @@ function maybeLink(text, href, showIcon) {
   )
 }
 
-function SkillEntry({ e, type, ctx, tone }) {
+function SkillEntry({ e, type, ctx, tone, layout = 'stacked' }) {
   const { s } = ctx
   const name = e.skill ?? e.language ?? e.interest
   const titleColor = s.applyAccent.entryTitle ? tone.accent : tone.text
   const subColor = s.applyAccent.entrySubtitle ? tone.accent : tone.text
+  const levelStyle = type === 'skills' ? s.skillLevel ?? 'dots' : 'dots'
+  const levelWord = !e.info && e.level >= 0 && type !== 'interests' && levelStyle !== 'text'
+
+  if (layout === 'inline') {
+    return (
+      <div style={{ color: subColor }}>
+        {name && <span style={{ fontWeight: 700, color: titleColor }}>{name}{e.info ? ': ' : ''}</span>}
+        {e.info}
+        <Level level={e.level} color={tone.accent} style={levelStyle} inline />
+      </div>
+    )
+  }
+  if (layout === 'tags') {
+    const items = skillItems(e.info)
+    return (
+      <div>
+        {name && <div style={{ fontWeight: 700, fontSize: 'var(--fs-entry)', color: titleColor, marginBottom: items.length ? '1mm' : 0 }}>{name}<Level level={e.level} color={tone.accent} style={levelStyle} inline /></div>}
+        {items.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.2mm' }}>
+            {items.map(item => (
+              <span key={item} style={{ border: `0.25mm solid color-mix(in srgb, ${tone.accent} 45%, transparent)`, background: `color-mix(in srgb, ${tone.accent} 7%, transparent)`, borderRadius: '1mm', padding: '0.35mm 1.8mm', fontSize: '0.94em', lineHeight: 1.35, color: subColor }}>{item}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div>
       {name && <div style={{ fontWeight: 700, fontSize: 'var(--fs-entry)', color: titleColor }}>{name}</div>}
       {e.info && <div style={{ color: subColor }}>{e.info}</div>}
-      {!e.info && e.level >= 0 && type !== 'interests' && <div>{LEVELS[e.level]}</div>}
-      <Level level={e.level} color={tone.accent} />
+      {levelWord && <div>{LEVELS[e.level]}</div>}
+      <Level level={e.level} color={tone.accent} style={levelStyle} />
     </div>
   )
 }

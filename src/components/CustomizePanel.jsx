@@ -308,6 +308,7 @@ function LayoutTab({ r, s, set }) {
       <Row label="Subtitle placement"><Segmented value={s.subtitlePlacement ?? 'same'} onChange={v => set('subtitlePlacement', v)} options={[{ value: 'same', label: 'Same line' }, { value: 'next', label: 'Next line' }]} /></Row>
       <Row label="Bullets"><Segmented value={s.listStyle ?? 'bullet'} onChange={v => set('listStyle', v)} options={[{ value: 'bullet', label: '•' }, { value: 'hyphen', label: '–' }, { value: 'none', label: 'None' }]} /></Row>
       <Row label="Bullet indent"><Num value={s.bulletIndent ?? 0} min={0} max={8} step={1} unit="mm" onChange={v => set('bulletIndent', v)} /></Row>
+      <SkillsLayout s={s} set={set} />
       {s.columns !== 'one' && (
         <div className="py-3">
           <p className="text-[13px] text-ink">Sections</p>
@@ -316,6 +317,65 @@ function LayoutTab({ r, s, set }) {
         </div>
       )}
     </>
+  )
+}
+
+// Skills: style, columns and how levels show.
+const SKILL_LAYOUTS = [
+  { value: 'stacked', label: 'Stacked', hint: 'Group name, skills underneath' },
+  { value: 'inline', label: 'Inline', hint: 'Group: skill, skill, skill' },
+  { value: 'tags', label: 'Tags', hint: 'Each skill as a tag' },
+  { value: 'bullets', label: 'Bullets', hint: 'Each skill as a bullet' },
+  { value: 'table', label: 'Table', hint: 'Group names in a column' },
+]
+function SkillsLayout({ s, set }) {
+  const layout = s.skillsLayout ?? 'stacked'
+  const cols = s.skillsColumns ?? 1
+  return (
+    <div className="border-t border-rule/60 py-3">
+      <p className="text-[13px] font-medium text-ink">Skills</p>
+      <p className="mb-3 text-[11.5px] text-muted">{SKILL_LAYOUTS.find(l => l.value === layout)?.hint}. {layout === 'table' ? 'Tables are always one column.' : 'Side columns show at most 2 columns.'}</p>
+      <div className="grid grid-cols-5 gap-1.5">
+        {SKILL_LAYOUTS.map(l => (
+          <button key={l.value} onClick={() => set('skillsLayout', l.value)} title={l.hint}
+            className={clsx('flex flex-col items-center gap-1.5 rounded-md border bg-white px-1 pb-1.5 pt-2.5 transition', layout === l.value ? 'border-ink ring-1 ring-ink' : 'border-rule hover:border-ink/40')}>
+            <SkillArt kind={l.value} cols={l.value === 'table' ? 1 : cols} a={layout === l.value} />
+            <span className={clsx('text-[11.5px]', layout === l.value ? 'font-medium text-ink' : 'text-muted')}>{l.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 grid grid-cols-[132px_1fr] items-center gap-3">
+        <p className="text-[13px] text-ink">Columns</p>
+        <div className={layout === 'table' ? 'pointer-events-none opacity-40' : ''}>
+          <Segmented value={cols} onChange={v => set('skillsColumns', v)} options={[1, 2, 3, 4].map(n => ({ value: n, label: String(n) }))} />
+        </div>
+        <p className="text-[13px] text-ink">Skill levels</p>
+        <Segmented value={s.skillLevel ?? 'dots'} onChange={v => set('skillLevel', v)} options={[{ value: 'dots', label: '●●●○○' }, { value: 'bar', label: 'Bar' }, { value: 'text', label: 'Text' }, { value: 'hidden', label: 'Hidden' }]} />
+      </div>
+      <p className="mt-2 text-[11.5px] text-muted">Levels show for skills with a level set in Content. One column reads best for applicant tracking systems.</p>
+    </div>
+  )
+}
+
+// Tiny schematic of a skills layout for the style picker.
+function SkillArt({ kind, cols, a }) {
+  const c = a ? '#17171b' : '#cdc8bc'
+  const soft = a ? '#8a8780' : '#e3ded2'
+  const bar = (w, color = c, h = 3) => <span className="block rounded-sm" style={{ width: w, height: h, background: color }} />
+  const n = Math.min(cols, 3)
+  const cell = key => {
+    if (kind === 'inline') return <span key={key} className="flex gap-0.5">{bar(6)}{bar(12, soft, 2)}</span>
+    if (kind === 'tags') return <span key={key} className="flex flex-col gap-0.5">{bar(8)}<span className="flex gap-0.5">{[0, 1].map(i => <span key={i} className="block h-[5px] w-[6px] rounded-[2px] border" style={{ borderColor: c }} />)}</span></span>
+    if (kind === 'bullets') return <span key={key} className="flex items-center gap-0.5"><span className="h-[3px] w-[3px] rounded-full" style={{ background: c }} />{bar(9, soft, 2)}</span>
+    return <span key={key} className="flex flex-col gap-0.5">{bar(9)}{bar(13, soft, 2)}</span>
+  }
+  if (kind === 'table') {
+    return <span className="flex h-7 w-[46px] flex-col justify-center gap-1">{[0, 1, 2].map(i => <span key={i} className="flex gap-1">{bar(10)}{bar(22, soft, 2)}</span>)}</span>
+  }
+  return (
+    <span className="grid h-7 w-[46px] content-center gap-x-1 gap-y-1" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
+      {Array.from({ length: n * (kind === 'bullets' ? 3 : 2) }, (_, i) => cell(i))}
+    </span>
   )
 }
 
