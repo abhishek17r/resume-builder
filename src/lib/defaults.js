@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS = {
   listStyle: 'bullet', // bullet | hyphen | none
   bulletIndent: 0, // mm the bullet list sits in from the entry's text
   titlePlacement: 'below', // below | inline: professional title under the name, or beside it
+  educationLayout: 'school', // school (school bold, degree below) | degree (degree bold, school below) | inline (Degree, School)
   skillsLayout: 'stacked', // stacked | inline | tags | bullets | table
   skillsColumns: 1, // 1-4 (capped at 2 in a side column; table is always one column)
   skillLevel: 'dots', // dots | bar | text | hidden

@@ -305,6 +305,7 @@ function LayoutTab({ r, s, set }) {
       {s.entryLayout === 'full' && (
         <Row label="Dates & location"><Segmented value={s.datePosition} onChange={v => set('datePosition', v)} options={[{ value: 'right', label: 'Right' }, { value: 'below', label: 'Below title' }]} /></Row>
       )}
+      <Row label="Education" hint="How degree and school are laid out"><Segmented value={s.educationLayout ?? 'school'} onChange={v => set('educationLayout', v)} options={[{ value: 'school', label: 'School first' }, { value: 'degree', label: 'Degree first' }, { value: 'inline', label: 'One line' }]} /></Row>
       <Row label="Subtitle placement"><Segmented value={s.subtitlePlacement ?? 'same'} onChange={v => set('subtitlePlacement', v)} options={[{ value: 'same', label: 'Same line' }, { value: 'next', label: 'Next line' }]} /></Row>
       <Row label="Bullets"><Segmented value={s.listStyle ?? 'bullet'} onChange={v => set('listStyle', v)} options={[{ value: 'bullet', label: '•' }, { value: 'hyphen', label: '–' }, { value: 'none', label: 'None' }]} /></Row>
       <Row label="Bullet indent"><Num value={s.bulletIndent ?? 0} min={0} max={8} step={1} unit="mm" onChange={v => set('bulletIndent', v)} /></Row>

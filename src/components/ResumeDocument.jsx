@@ -687,6 +687,43 @@ function EntryHeader({ e, type, ctx, tone, narrow, columns }) {
   const subColor = s.applyAccent.entrySubtitle ? tone.accent : tone.text
   const dateColor = s.applyAccent.dates ? tone.accent : tone.text
 
+  // Education: school and degree on separate lines (by default the school, in bold, with the degree below);
+  // reusing the job layout ("Degree, School" in one bold run) makes the two hard to tell apart.
+  const eduLayout = s.educationLayout ?? 'school'
+  if (type === 'education' && eduLayout !== 'inline') {
+    const school = maybeLink(e.school, e.schoolLink, s.linkIcon)
+    const [main, second] = eduLayout === 'degree' ? [e.degree, school] : [school, e.degree]
+    const line1 = <span style={{ fontSize: 'var(--fs-entry)', fontWeight: 700, color: titleColor }}>{main || second}</span>
+    const line2 = main && second
+      ? <div style={{ color: subColor, fontStyle: s.subtitleStyle === 'normal' ? 'normal' : 'italic', fontWeight: 400 }}>{second}</div>
+      : null
+    const eduDates = formatRange(e.startDate, e.endDate, s.dateFormat, { hasStart: true, lang: s.language })
+    const eduMeta = [eduDates, e.location].filter(Boolean).join(' | ')
+    if (columns) {
+      return (
+        <div style={{ display: 'flex', gap: '4mm' }}>
+          <div style={{ width: '24%', flexShrink: 0, color: dateColor }}>
+            {eduDates && <div>{eduDates}</div>}
+            {e.location && <div>{e.location}</div>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}><div>{line1}</div>{line2}</div>
+        </div>
+      )
+    }
+    if (s.datePosition === 'right' && !narrow) {
+      return (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4mm' }}>
+            <div style={{ minWidth: 0 }}>{line1}</div>
+            {eduMeta && <div style={{ color: dateColor, whiteSpace: 'nowrap', flexShrink: 0 }}>{eduMeta}</div>}
+          </div>
+          {line2}
+        </div>
+      )
+    }
+    return <div><div>{line1}</div>{line2}{eduMeta && <div style={{ color: dateColor }}>{eduMeta}</div>}</div>
+  }
+
   const [title, subtitle] = def.title(e)
   const [f0, f1] = def.fields
   const titleNode = f0.link ? maybeLink(title, e[`${f0.key}Link`], s.linkIcon) : title
