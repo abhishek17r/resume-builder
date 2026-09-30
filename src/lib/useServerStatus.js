@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { health } from './api'
 
-// The local AI server: null while checking, false when offline, else { mock, provider, model }.
+// The local AI server: null while checking, false when offline, else { mock, provider, model, label, source }.
 // Shared across components; re-checked at most every 30 seconds.
 let cached = null
 let checkedAt = 0
@@ -19,6 +19,9 @@ async function check() {
   })
   return inflight
 }
+
+// Re-check now (e.g. after switching AI provider on the Integrations page).
+export const refreshServerStatus = () => { checkedAt = 0; inflight = null; return check() }
 
 export function useServerStatus() {
   const [status, setStatus] = useState(cached)

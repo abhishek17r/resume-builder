@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Undo2, Redo2, Eye } from 'lucide-react'
 import { Sidebar, EditorHeader } from './components/TopBar'
 import Landing from './components/Landing'
+import IntegrationsPage from './components/IntegrationsPage'
 import ContentPanel from './components/ContentPanel'
 import CustomizePanel from './components/CustomizePanel'
 import Preview from './components/Preview'
@@ -64,7 +65,7 @@ export default function App() {
     const onHash = () => {
       const [next, tab] = location.hash.slice(1).split('/')
       if (next === 'new') setCreateTab(tab || 'blank')
-      if (['home', 'overview', 'content', 'customize', 'optimize', 'new', 'vault'].includes(next)) setView(next)
+      if (['home', 'overview', 'content', 'customize', 'optimize', 'new', 'vault', 'integrations'].includes(next)) setView(next)
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
@@ -109,7 +110,7 @@ export default function App() {
   if (view === 'home') return <Landing onOpen={() => setView('overview')} onImport={() => openCreate('file')} onJob={() => openCreate('job')} />
 
   const editing = !empty && ['content', 'customize', 'optimize'].includes(view)
-  const page = view === 'new' ? createPage : view === 'vault' ? <VaultPage /> : <Overview onOpen={() => setView('content')} onCreate={openCreate} />
+  const page = view === 'new' ? createPage : view === 'vault' ? <VaultPage /> : view === 'integrations' ? <IntegrationsPage /> : <Overview onOpen={() => setView('content')} onCreate={openCreate} />
 
   return (
     <div className="md:flex">
@@ -118,7 +119,7 @@ export default function App() {
           Couldn’t save your latest changes ({saveError}). Export your resume as JSON from the ⋯ menu to keep a copy.
         </div>
       )}
-      <Sidebar view={editing ? view : view === 'new' ? 'new' : view === 'vault' ? 'vault' : 'overview'} setView={setView} openCreate={openCreate} createTab={createTab} />
+      <Sidebar view={editing ? view : view === 'new' ? 'new' : view === 'vault' ? 'vault' : view === 'integrations' ? 'integrations' : 'overview'} setView={setView} openCreate={openCreate} createTab={createTab} />
 
       {!editing ? (
         <div className="min-w-0 flex-1">{page}</div>

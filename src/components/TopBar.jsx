@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FileText, Paintbrush, Gauge, Archive, Download, MoreHorizontal, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson,
-  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen,
+  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen, Plug,
 } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
 import { useServerStatus } from '../lib/useServerStatus'
@@ -52,8 +52,9 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
       <RailBtn title={`Resumes (${resumes.length})`} active={view === 'overview'} onClick={() => go('overview')}><Files size={17} /></RailBtn>
       <RailBtn title={`Vault (${vaultCount})`} active={view === 'vault'} onClick={() => go('vault')}><Archive size={17} /></RailBtn>
       <RailBtn title="Tailor to a job" active={view === 'new' && createTab === 'job'} onClick={() => openCreate('job')}><Target size={17} /></RailBtn>
+      <RailBtn title="Integrations" active={view === 'integrations'} onClick={() => go('integrations')}><Plug size={17} /></RailBtn>
       <div className="mt-auto flex flex-col items-center gap-2">
-        <LocalDot />
+        <button onClick={() => go('integrations')} className="grid h-5 w-5 place-items-center"><LocalDot /></button>
         <RailBtn title="Expand sidebar (⌘\)" onClick={toggle}><PanelLeftOpen size={17} /></RailBtn>
       </div>
     </div>
@@ -82,6 +83,7 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
         <NavItem icon={Files} active={view === 'overview'} onClick={() => go('overview')} count={resumes.length}>Resumes</NavItem>
         <NavItem icon={Archive} active={view === 'vault'} onClick={() => go('vault')} count={vaultCount}>Vault</NavItem>
         <NavItem icon={Target} active={view === 'new' && createTab === 'job'} onClick={() => { openCreate('job'); setOpen(false) }}>Tailor to a job</NavItem>
+        <NavItem icon={Plug} active={view === 'integrations'} onClick={() => go('integrations')}>Integrations</NavItem>
       </nav>
 
       {recent.length > 0 && (
@@ -101,7 +103,7 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
         </div>
       )}
 
-      <LocalStatus />
+      <LocalStatus onOpen={() => go('integrations')} />
     </div>
   )
 
@@ -143,7 +145,7 @@ function RailBtn({ title, active, dark, children, ...p }) {
 function LocalDot() {
   const server = useServerStatus()
   const dot = server === null ? 'bg-slate-300' : server === false ? 'bg-red-500' : server.mock ? 'bg-amber-500' : 'bg-emerald-600'
-  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode' : `AI · ${server.model ?? server.provider}`
+  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode' : `AI · ${server.label ?? server.provider} · ${server.model}`
   return <span title={`Saved in this browser · ${text}`} className={clsx('mb-1 h-[7px] w-[7px] rounded-full', dot)} />
 }
 
@@ -159,16 +161,16 @@ function NavItem({ icon: Icon, active, count, children, ...p }) {
 }
 
 // Where things live: resumes in this browser, AI through the local server.
-function LocalStatus() {
+function LocalStatus({ onOpen }) {
   const server = useServerStatus()
   const dot = server === null ? 'bg-slate-300' : server === false ? 'bg-red-500' : server.mock ? 'bg-amber-500' : 'bg-emerald-600'
-  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode' : `AI · ${server.model ?? server.provider}`
+  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode · set up' : `AI · ${server.model ?? server.provider}`
   return (
     <div className="mt-auto border-t border-rule px-5 py-4">
       <p className="flex items-center gap-2 text-[12.5px] text-body"><HardDrive size={13} className="text-muted" /> Saved in this browser</p>
-      <p className="mt-1.5 flex items-center gap-2 text-[12.5px] text-body" title={server === false ? 'Start it with npm run dev in resume-builder-api' : undefined}>
-        <span className={clsx('ml-[3px] h-[7px] w-[7px] rounded-full', dot)} /> <span className="truncate">{text}</span>
-      </p>
+      <button onClick={onOpen} className="mt-1.5 flex w-full items-center gap-2 text-left text-[12.5px] text-body hover:text-ink" title={server === false ? 'Start it with npm run dev' : 'AI provider settings'}>
+        <span className={clsx('ml-[3px] h-[7px] w-[7px] shrink-0 rounded-full', dot)} /> <span className="truncate">{text}</span>
+      </button>
     </div>
   )
 }

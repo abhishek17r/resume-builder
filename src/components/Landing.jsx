@@ -132,7 +132,7 @@ export default function Landing({ onOpen, onImport, onJob }) {
 const STEPS = [
   ['Install and start', `${INSTALL_CMD}\n# gets the app and the AI server, installs both, starts them`],
   ['Open it', '# http://localhost:5190\n# works straight away; AI features run in demo mode'],
-  ['Add an AI key (optional)', '# in offerstack/api/.env\nOPENAI_API_KEY=…      # or ANTHROPIC_API_KEY=…'],
+  ['Connect your AI (optional)', '# Integrations page in the app: OpenAI, Anthropic, Gemini,\n# OpenRouter, Groq, Ollama (local) or any OpenAI-compatible API'],
   ['Start again later', 'cd offerstack/app && npm run dev'],
 ]
 

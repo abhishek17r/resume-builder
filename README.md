@@ -13,7 +13,7 @@ Tailoring a resume for every application is the advice everyone gives and nobody
 1. **Your history is the source of truth.** Every bullet you've written, across every version, lives in one deduplicated **vault**. Tailored resumes are assembled from it, never invented.
 2. **AI suggests; it doesn't invent.** Rewrites keep your facts and numbers, and server-side guards reject edits that don't. Missing metrics become `[X]` placeholders for you to fill.
 3. **Scores you can check.** The job match isn't a number an LLM made up: it's computed from requirement coverage, keywords and title fit, and shown piece by piece.
-4. **Local-first.** No account, no cloud database. Resumes live in your browser; a small local server holds your API key and talks to the AI provider only when you ask.
+4. **Local-first, bring your own AI.** No account, no cloud database. Resumes live in your browser; a small local server holds your key and talks to the provider you chose (OpenAI, Anthropic, Gemini, OpenRouter, Groq, or a model on your own computer), only when you ask.
 
 ## Quickstart
 
@@ -23,12 +23,15 @@ You need **Node.js 20+** and **git**. One line installs and starts everything:
 curl -fsSL https://raw.githubusercontent.com/abhishek17r/resume-builder/main/install.sh | sh
 ```
 
-Then open **http://localhost:5190**. AI features work in demo mode straight away; for the real thing, add a key to `offerstack/api/.env` and restart:
+Then open **http://localhost:5190**. AI features work in demo mode straight away. For the real thing, open **Integrations** in the app and connect your own AI:
 
-```bash
-OPENAI_API_KEY=sk-...        # or
-ANTHROPIC_API_KEY=sk-ant-...
-```
+| Provider | What you need |
+|---|---|
+| OpenAI, Anthropic, Google Gemini, OpenRouter, Groq | Your API key |
+| Ollama | Ollama running on your computer: nothing leaves your machine |
+| Any OpenAI-compatible API (LM Studio, vLLM, a company gateway…) | Its base URL (and key, if it needs one) |
+
+Test the connection, pick a model, and switch providers any time without restarting. Keys are saved by the local AI server on your computer (`api/.data/`, readable only by your user) and never stored in the browser. Prefer config files? `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `offerstack/api/.env` still works.
 
 <details>
 <summary>Manual install</summary>
@@ -101,7 +104,7 @@ flowchart LR
     UI[React app] <--> DB[(IndexedDB<br/>resumes + vault)]
   end
   UI -- only what a request needs --> API[Local AI server<br/>Node + Express]
-  API -- your key --> P[OpenAI or Anthropic]
+  API -- your key --> P[Your AI provider<br/>OpenAI · Anthropic · Gemini · OpenRouter · Groq · Ollama · any OpenAI-compatible]
 ```
 
 - **App** (this repo): React 19, Vite, Tailwind, zustand. Custom paginated renderer; importers built on pdf.js and mammoth.
