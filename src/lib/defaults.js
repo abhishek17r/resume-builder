@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS = {
   subtitlePlacement: 'same', // same (Title, Subtitle) | next (own line)
   listStyle: 'bullet', // bullet | hyphen | none
   bulletIndent: 0, // mm the bullet list sits in from the entry's text
+  titlePlacement: 'below', // below | inline: professional title under the name, or beside it
   // Headings
   headingStyle: 'plain', // plain | underline | box | line | bar | dotted | fill | overline
   headingCaps: 'capitalize', // capitalize | uppercase

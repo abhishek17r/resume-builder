@@ -397,6 +397,7 @@ function DetailsTab({ r, s, set }) {
         </div>
       </Row>
       <Row label="Heading icons"><Segmented value={s.headingIcons} onChange={v => set('headingIcons', v)} options={[{ value: 'none', label: 'None' }, { value: 'outline', label: 'Outline' }, { value: 'filled', label: 'Filled' }]} /></Row>
+      <Row label="Name & title"><Segmented value={s.titlePlacement ?? 'below'} onChange={v => set('titlePlacement', v)} options={[{ value: 'below', label: 'Separate lines' }, { value: 'inline', label: 'Same line' }]} /></Row>
       <Row label="Header alignment"><Segmented value={s.headerAlign} onChange={v => set('headerAlign', v)} options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Centre' }]} /></Row>
       <Row label="Contact details"><Segmented value={s.detailsArrangement} onChange={v => set('detailsArrangement', v)} options={[{ value: 'icon', label: 'Icons' }, { value: 'bullet', label: 'a • b' }, { value: 'bar', label: 'a | b' }]} /></Row>
       {s.detailsArrangement === 'icon' && (
