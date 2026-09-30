@@ -128,7 +128,7 @@ export default function VaultPage() {
             <RefreshCw size={15} /> Sync
           </button>
           <button onClick={() => aiTag(true)} disabled={tagging.status === 'loading' || server === false || !byRules}
-            className="flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-[14px] font-medium text-white hover:bg-ink/85 disabled:opacity-40"
+            className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-[14px] font-medium text-white hover:bg-brand-deep disabled:opacity-40"
             title={server === false ? 'AI isn’t connected: open Integrations' : 'Refine keyword tags with AI (your own tags are never changed)'}>
             {tagging.status === 'loading' ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
             {tagging.status === 'loading' ? `Tagging ${tagging.done}/${tagging.total}…` : `AI tag ${byRules} bullets`}

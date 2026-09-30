@@ -89,7 +89,7 @@ function PreviewModal({ model, pages, onClose, onDownload }) {
   const step = d => setZoom(z => Math.max(0.3, Math.min(2.5, +((z ?? fit) + d).toFixed(2))))
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#2b2a30]/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#2b1f3f]/95 backdrop-blur-sm">
       <div className="flex items-center gap-2 px-4 py-3 text-white sm:px-6">
         <span className="min-w-0 truncate text-[15px] font-semibold">{model.resume.personal.fullName || model.resume.name}</span>
         <span className="hidden shrink-0 text-[13px] text-white/60 sm:inline">· {pages.length} page{pages.length > 1 ? 's' : ''}</span>

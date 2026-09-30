@@ -73,7 +73,7 @@ function Btn({ children, onClick, primary, disabled, title, icon: Icon }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title}
       className={clsx('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40',
-        primary ? 'bg-ink text-white hover:bg-ink/85' : 'border border-rule bg-white text-ink hover:border-ink/40')}>
+        primary ? 'bg-brand text-white hover:bg-brand-deep' : 'border border-rule bg-white text-ink hover:border-ink/40')}>
       {Icon && <Icon size={14} />} {children}
     </button>
   )

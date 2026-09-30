@@ -74,7 +74,7 @@ export default function VaultPicker({ section, entry }) {
                     </div>
                     {inHere
                       ? <span className="flex shrink-0 items-center gap-1 text-[12px] text-emerald-700"><Check size={13} /> In entry</span>
-                      : <button onClick={() => add(b)} className="flex shrink-0 items-center gap-1 rounded-md bg-brand-soft px-2 py-1 text-[12px] font-semibold text-brand hover:bg-[#d6e7dd]"><Plus size={13} /> Add</button>}
+                      : <button onClick={() => add(b)} className="flex shrink-0 items-center gap-1 rounded-md bg-brand-soft px-2 py-1 text-[12px] font-semibold text-brand hover:bg-brand-hover"><Plus size={13} /> Add</button>}
                   </li>
                 )
               })}

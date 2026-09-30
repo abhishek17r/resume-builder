@@ -244,7 +244,7 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
           <div className="mt-6 flex items-center justify-end gap-3">
             <button type="button" onClick={onCancel} className="rounded-md px-5 py-2.5 font-medium text-muted hover:bg-field hover:text-ink">Cancel</button>
             <button type="submit" disabled={!canCreate}
-              className="rounded-md bg-ink px-7 py-2.5 text-[15px] font-medium text-white transition hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-40">
+              className="rounded-md bg-brand px-7 py-2.5 text-[15px] font-medium text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-40">
               {tab === 'job' ? (jd.status === 'running' ? 'Building…' : 'Build for this job') : tab === 'vault' ? 'Create from vault' : importing ? 'Create from import' : 'Create resume'}
             </button>
           </div>

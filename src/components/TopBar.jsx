@@ -15,7 +15,7 @@ import BackupsDialog from './BackupsDialog'
 
 export function Mark({ size = 28 }) {
   return (
-    <span className="grid shrink-0 place-items-center rounded-[7px] bg-ink text-canvas" style={{ width: size, height: size }}>
+    <span className="sunrise grid shrink-0 place-items-center rounded-[8px] text-white shadow-[0_4px_12px_-4px_rgba(255,122,69,.6)]" style={{ width: size, height: size }}>
       <span className="display leading-none" style={{ fontSize: size * 0.78, marginTop: -size * 0.04 }}>o</span>
     </span>
   )
@@ -75,7 +75,7 @@ export function Sidebar({ view, setView, openCreate, createTab }) {
       </div>
 
       <div className="px-3">
-        <button onClick={() => { openCreate('blank'); setOpen(false) }} className="flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2.5 text-[14px] font-medium text-white transition hover:bg-ink/85">
+        <button onClick={() => { openCreate('blank'); setOpen(false) }} className="flex w-full items-center justify-center gap-2 rounded-md bg-brand px-3 py-2.5 text-[14px] font-medium text-white transition hover:bg-brand-deep">
           <Plus size={16} /> New resume
         </button>
       </div>
@@ -138,7 +138,7 @@ function RailBtn({ title, active, dark, children, ...p }) {
   return (
     <button {...p} title={title} aria-label={title}
       className={clsx('grid h-9 w-9 place-items-center rounded-md transition',
-        dark ? 'bg-ink text-white hover:bg-ink/85' : active ? 'bg-white text-brand ring-1 ring-rule' : 'text-muted hover:bg-white/70 hover:text-ink')}>
+        dark ? 'bg-brand text-white hover:bg-brand-deep' : active ? 'bg-white text-brand ring-1 ring-rule' : 'text-muted hover:bg-white/70 hover:text-ink')}>
       {children}
     </button>
   )
@@ -157,7 +157,7 @@ function LocalDot() {
 function NavItem({ icon: Icon, active, count, children, ...p }) {
   return (
     <button {...p} className={clsx('flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[14px] transition',
-      active ? 'bg-white font-medium text-ink ring-1 ring-rule' : 'text-body hover:bg-white/60 hover:text-ink')}>
+      active ? 'bg-brand-soft font-medium text-ink' : 'text-body hover:bg-white/70 hover:text-ink')}>
       <Icon size={16} className={active ? 'text-brand' : 'text-muted'} />
       <span className="flex-1">{children}</span>
       {count != null && <span className="meta text-muted">{count}</span>}
@@ -243,7 +243,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
 
         <div className="ml-auto flex items-center gap-2">
           <SaveStatus />
-          <button onClick={onDownload} className="flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-[14px] font-medium text-white transition hover:bg-ink/85">
+          <button onClick={onDownload} className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-[14px] font-medium text-white transition hover:bg-brand-deep">
             <Download size={16} /> <span className="hidden sm:inline">Download PDF</span>
           </button>
           <div className="relative">

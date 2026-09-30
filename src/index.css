@@ -1,34 +1,44 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* Paper, ink and one green: flat surfaces with hairline rules instead of floating cards. */
-  --color-canvas: #f4f1ea;
-  --color-paper: #fbfaf6;
-  --color-rule: #e3ded2;
-  --color-ink: #17171b;
-  --color-body: #3b3a40;
-  --color-muted: #75726c;
-  --color-field: #f1eee6;
-  --color-soft: #f6f3ec;
-  --color-brand: #1f6a4f;
-  --color-brand-soft: #e5efe9;
-  --color-cta-from: #17171b;
-  --color-cta-to: #17171b;
+  --font-sans: "Plus Jakarta Sans", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Sunrise: warm cream surfaces, deep plum ink, a coral accent and a little sunshine. */
+  --color-canvas: #fff8f0;
+  --color-paper: #fffdf9;
+  --color-rule: #f0e2d2;
+  --color-ink: #2b1f3f;
+  --color-body: #4a4060;
+  --color-muted: #857a92;
+  --color-field: #fbf0e3;
+  --color-soft: #fff4e8;
+  --color-brand: #e2552b;
+  --color-brand-soft: #ffe8dc;
+  --color-brand-hover: #ffd9c7;
+  --color-brand-deep: #c9441d;
+  --color-sun: #ffb627;
+  --color-sun-soft: #fff2cf;
+  --color-cta-from: #2b1f3f;
+  --color-cta-to: #2b1f3f;
 }
 
 html, body { background: var(--color-canvas); color: var(--color-body); font-size: 15px; }
-body { -webkit-font-smoothing: antialiased; font-feature-settings: "ss01", "cv11"; }
-::selection { background: #cfe3d8; }
+body { -webkit-font-smoothing: antialiased; }
+::selection { background: #ffd9c7; }
 
+.sunrise { background: linear-gradient(135deg, #ff7a45 0%, #ff9f43 55%, #ffc53d 100%); }
+/* A soft morning glow behind hero areas. */
+.glow { background-repeat: no-repeat; background-size: 100% 900px; background-image:
+  radial-gradient(60% 55% at 85% 20%, rgb(255 197 61 / .28), transparent 70%),
+  radial-gradient(50% 50% at 10% 0%, rgb(255 122 69 / .14), transparent 70%); }
 .card { background: #fff; border: 1px solid var(--color-rule); border-radius: 10px; }
 .cta { background: var(--color-ink); }
-.cta:hover { background: #2a2a31; }
+.cta:hover { background: #3b2d52; }
 .field { @apply w-full rounded-md border border-rule bg-white px-3 py-2.5 text-[15px] text-ink outline-none ring-brand/30 transition focus:border-brand focus:ring-2; }
 .label { @apply mb-1.5 block text-[13px] font-semibold uppercase tracking-[0.06em] text-muted; }
-.display { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+.display { font-family: var(--font-serif); font-weight: 500; font-variation-settings: "SOFT" 100, "opsz" 72; letter-spacing: -0.015em; }
+.display em { font-style: italic; font-variation-settings: "SOFT" 100, "opsz" 72; }
 .meta { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 /* Editor and preview panes scroll on their own; keep their scrollbars quiet. */

@@ -138,7 +138,7 @@ export default function App() {
                 : <ContentPanel />}
             </div>
             {/* Below lg the preview column is hidden; the floating Preview button opens it full screen. */}
-            <div className="pane-scroll hidden min-w-0 flex-1 border-l border-rule bg-[#ebe7de] px-8 pb-24 pt-8 lg:block lg:overflow-y-auto">
+            <div className="pane-scroll hidden min-w-0 flex-1 border-l border-rule bg-[#f7eadb] px-8 pb-24 pt-8 lg:block lg:overflow-y-auto">
               <Preview resume={resume} open={previewOpen} setOpen={setPreviewOpen} onDownload={download} />
             </div>
           </main>

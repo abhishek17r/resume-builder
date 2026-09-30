@@ -484,7 +484,7 @@ const LinkMini = () => (
 function DoneBar({ onDone }) {
   return (
     <div className="sticky bottom-4 flex justify-end">
-      <button onClick={onDone} className="flex items-center gap-2 rounded-md bg-ink px-6 py-2.5 text-[15px] font-medium text-white shadow-[0_12px_28px_-14px_rgba(23,23,27,.6)] hover:bg-ink/85">
+      <button onClick={onDone} className="flex items-center gap-2 rounded-md bg-brand px-6 py-2.5 text-[15px] font-medium text-white shadow-[0_12px_28px_-14px_rgba(226,85,43,.55)] hover:bg-brand-deep">
         <Check size={17} /> Done
       </button>
     </div>

@@ -12,7 +12,7 @@ export const useLabels = () => {
 export function LabelChip({ label, className, onClick }) {
   if (!label) return null
   return (
-    <span onClick={onClick} className={clsx('inline-flex max-w-full items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-[12px] font-medium text-brand', onClick && 'cursor-pointer hover:bg-[#d6e7dd]', className)}>
+    <span onClick={onClick} className={clsx('inline-flex max-w-full items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-[12px] font-medium text-brand', onClick && 'cursor-pointer hover:bg-brand-hover', className)}>
       <Tag size={11} className="shrink-0" /> <span className="truncate">{label}</span>
     </span>
   )

@@ -34,7 +34,7 @@ export function PageHeader({ title, sub, children }) {
 export function Button({ primary, icon: Icon, children, className, ...p }) {
   return (
     <button {...p} className={clsx('flex items-center gap-2 rounded-md px-4 py-2 text-[14px] font-medium transition disabled:opacity-40',
-      primary ? 'bg-ink text-white hover:bg-ink/85' : 'border border-rule bg-white text-ink hover:border-ink/40', className)}>
+      primary ? 'bg-brand text-white hover:bg-brand-deep' : 'border border-rule bg-white text-ink hover:border-ink/40', className)}>
       {Icon && <Icon size={15} />} {children}
     </button>
   )

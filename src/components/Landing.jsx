@@ -17,12 +17,12 @@ export default function Landing({ onOpen, onImport, onJob }) {
   }), [])
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="glow min-h-screen bg-canvas">
       <header className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-6">
         <Mark />
         <span className="display text-[22px] text-ink">{APP_NAME}</span>
         <a href="#local" className="ml-auto hidden text-[14px] text-body hover:text-ink sm:block">Run it locally</a>
-        <button onClick={onOpen} className="ml-4 flex items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-[14px] font-medium text-white hover:bg-ink/85">
+        <button onClick={onOpen} className="ml-4 flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-[14px] font-medium text-white hover:bg-brand-deep">
           Open workspace <ArrowRight size={15} />
         </button>
       </header>
@@ -40,7 +40,7 @@ export default function Landing({ onOpen, onImport, onJob }) {
             {APP_TAGLINE} Keep every bullet you’ve ever written in one vault, build a version tailored to each job in under a minute, and see exactly how well it matches, all on your own machine.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <button onClick={onOpen} className="flex items-center gap-2 rounded-md bg-ink px-5 py-3 text-[15px] font-medium text-white hover:bg-ink/85">
+            <button onClick={onOpen} className="flex items-center gap-2 rounded-md bg-brand px-5 py-3 text-[15px] font-medium text-white hover:bg-brand-deep">
               Open workspace <ArrowRight size={16} />
             </button>
             <button onClick={onImport} className="flex items-center gap-2 rounded-md border border-rule bg-white px-5 py-3 text-[15px] font-medium text-ink hover:border-ink/40">
@@ -68,7 +68,7 @@ export default function Landing({ onOpen, onImport, onJob }) {
         </div>
         <div className="overflow-hidden rounded-[10px] border border-rule bg-white shadow-[0_30px_60px_-30px_rgba(23,23,27,.35)]">
           <div className="flex items-center gap-2 border-b border-rule bg-paper px-4 py-2.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#e0dbcf]" /><span className="h-2.5 w-2.5 rounded-full bg-[#e0dbcf]" /><span className="h-2.5 w-2.5 rounded-full bg-[#e0dbcf]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#f3dcc6]" /><span className="h-2.5 w-2.5 rounded-full bg-[#f3dcc6]" /><span className="h-2.5 w-2.5 rounded-full bg-[#f3dcc6]" />
             <span className="meta mx-auto rounded-sm bg-white px-3 py-0.5 text-muted ring-1 ring-rule">localhost:5190</span>
           </div>
           <img src="/demo/tailor-journey.gif" alt="Pasting a job description, building a tailored resume from the vault, reviewing the match score and switching templates" width="960" height="600" loading="lazy" className="block h-auto w-full" />
@@ -160,7 +160,7 @@ function LocalSetup() {
             <p className="flex items-center gap-2"><Circle size={9} className="fill-emerald-500 text-emerald-500" /> App: running</p>
             <p className="mt-1.5 flex items-center gap-2">
               <Circle size={9} className={server ? (server.mock || !server.connected ? 'fill-amber-500 text-amber-500' : 'fill-emerald-500 text-emerald-500') : server === false ? 'fill-red-500 text-red-500' : 'fill-slate-500 text-slate-500'} />
-              AI server: <span className={clsx('text-canvas/85', server === false && 'text-[#f5a3a3]')}>{ai[0]}</span>
+              AI server: <span className={clsx('text-canvas/85', server === false && 'text-[#ffb3a0]')}>{ai[0]}</span>
             </p>
           </div>
         </div>

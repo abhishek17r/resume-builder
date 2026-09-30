@@ -15,7 +15,7 @@ export default function AiNotice({ what = 'use AI features', className = '' }) {
           : <>AI isn’t connected, so you can’t {what}. Connect OpenAI, Anthropic or Gemini with your own API key.</>}
       </p>
       {!offline && (
-        <a href="#integrations" className="flex shrink-0 items-center gap-1.5 rounded-md bg-ink px-3 py-1.5 text-[13px] font-medium text-white hover:bg-ink/85">
+        <a href="#integrations" className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-[13px] font-medium text-white hover:bg-brand-deep">
           <Plug size={14} /> Connect AI
         </a>
       )}
