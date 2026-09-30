@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { sampleResume, blankResume, uid, blankEntry, DEFAULT_SETTINGS } from './defaults'
-import { idbStorage } from './storage'
+import { idbStorage, onRemoteSave } from './storage'
 import { SECTION_TYPES } from './sections'
 import { applyEditTo } from './optimize/apply'
 import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint, norm, vaultTags, tagKeywords } from './vault/sync'
@@ -329,10 +329,13 @@ export const useStore = create(
     {
       name: 'resume-builder',
       storage: createJSONStorage(() => idbStorage),
-      partialize: s => ({ resumes: s.resumes, currentId: s.currentId, vault: s.vault, designDefaults: s.designDefaults }),
+      // Shared by every tab. Which resume is open is per tab (see OPEN_KEY), so tabs don't switch each other.
+      partialize: s => ({ resumes: s.resumes, vault: s.vault, designDefaults: s.designDefaults }),
       // Fill in any settings added after a resume was first saved.
       merge: (persisted, current) => {
         const merged = { ...current, ...persisted }
+        const open = readOpen() ?? persisted?.currentId
+        merged.currentId = (merged.resumes ?? []).some(r => r.id === open) ? open : merged.resumes?.[0]?.id ?? current.currentId
         merged.vault = persisted?.vault ?? emptyVault()
         merged.resumes = (merged.resumes ?? current.resumes).map(r => ({
           ...r,
@@ -343,6 +346,29 @@ export const useStore = create(
     },
   ),
 )
+
+// The resume open in this tab, remembered across reloads (localStorage is per browser, like IndexedDB).
+const OPEN_KEY = 'rw.openResume'
+function readOpen() { try { return localStorage.getItem(OPEN_KEY) } catch { return null } }
+useStore.subscribe((state, prev) => {
+  if (state.currentId !== prev.currentId && state.currentId) try { localStorage.setItem(OPEN_KEY, state.currentId) } catch { /* private mode */ }
+})
+
+// Another tab saved: take its resumes, vault and design defaults, keep this tab's open resume.
+// Undo history is cleared when the resumes changed, so undo can't bring back (and save) an older copy.
+onRemoteSave(({ state: saved }) => {
+  if (!saved?.resumes) return
+  useStore.setState(s => {
+    const resumesChanged = JSON.stringify(saved.resumes) !== JSON.stringify(s.resumes)
+    return {
+      resumes: saved.resumes,
+      vault: saved.vault ?? s.vault,
+      designDefaults: saved.designDefaults, // as saved (undefined stays undefined), so applying it doesn't trigger a save
+      currentId: saved.resumes.some(r => r.id === s.currentId) ? s.currentId : saved.resumes[0]?.id ?? null,
+      ...(resumesChanged ? { past: [], future: [] } : {}),
+    }
+  })
+})
 
 const mapBullet = (vault, itemId, bulletId, fn) => ({
   ...vault,

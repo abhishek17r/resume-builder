@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FileText, Paintbrush, Gauge, Archive, Download, MoreHorizontal, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson,
-  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen, Plug,
+  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen, Plug, Check,
 } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
 import { useServerStatus } from '../lib/useServerStatus'
+import { onSaveResult } from '../lib/storage'
 import { APP_NAME } from '../config/app'
 import { LinkedInIcon } from './BrandIcons'
 
@@ -236,6 +237,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <SaveStatus />
           <button onClick={onDownload} className="flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-[14px] font-medium text-white transition hover:bg-ink/85">
             <Download size={16} /> <span className="hidden sm:inline">Download PDF</span>
           </button>
@@ -267,6 +269,22 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
         ))}
       </nav>
     </header>
+  )
+}
+
+// Autosave: every change is saved in this browser as you make it. Shows when that last happened.
+function SaveStatus() {
+  const [st, setSt] = useState({ at: null, error: null })
+  const [, tick] = useState(0)
+  useEffect(() => onSaveResult((error, at) => setSt(error ? { at: null, error } : { at, error: null })), [])
+  useEffect(() => { const t = setInterval(() => tick(n => n + 1), 20000); return () => clearInterval(t) }, [])
+  if (st.error) return <span className="meta text-red-600" title={String(st.error.message ?? st.error)}>Not saved</span>
+  const secs = st.at ? Math.round((Date.now() - st.at) / 1000) : null
+  const when = secs == null ? 'All changes saved' : secs < 20 ? 'Saved just now' : secs < 3600 ? `Saved ${Math.max(1, Math.round(secs / 60))}m ago` : 'Saved'
+  return (
+    <span className="meta hidden items-center gap-1 text-muted sm:flex" title="Changes save automatically in this browser, and open tabs stay in sync.">
+      <Check size={13} className="text-brand" /> {when}
+    </span>
   )
 }
 
