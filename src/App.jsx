@@ -13,6 +13,7 @@ import VaultPage from './components/VaultPage'
 import { useStore, useResume, useHydrated } from './lib/store'
 import { onSaveResult } from './lib/storage'
 import { PAGE_SIZES } from './components/ResumeDocument'
+import { downloadResume } from './lib/download'
 
 export default function App() {
   // First visit opens on the landing page; after that, on the resumes.
@@ -84,16 +85,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [undo, redo])
 
-  const download = () => {
-    const page = PAGE_SIZES[resume.settings.pageFormat]
-    const style = document.createElement('style')
-    style.textContent = `@page { size: ${page.w}mm ${page.h}mm; margin: 0; }`
-    document.head.appendChild(style)
-    const prevTitle = document.title
-    document.title = resume.personal.fullName ? `${resume.personal.fullName} - Resume` : resume.name
-    window.print()
-    document.title = prevTitle
-    style.remove()
+  // Saves Name_Resume_ddmmyyyy(n).pdf straight to the download folder (print dialog only as a fallback).
+  const [toast, setToast] = useState(null)
+  const download = async () => {
+    if (toast?.busy) return
+    setToast({ busy: true, text: 'Preparing your PDF…' })
+    const r = await downloadResume({ fullName: resume.personal.fullName, name: resume.name, page: PAGE_SIZES[resume.settings.pageFormat] })
+    setToast(r.ok ? { text: `Saved ${r.fileName} to your downloads` } : { text: `${r.reason}, so the print dialog was used instead.`, warn: true })
+    setTimeout(() => setToast(null), 5000)
   }
 
   // Wait for saved resumes to load from IndexedDB, so nothing edits the placeholder state first.
@@ -117,6 +116,11 @@ export default function App() {
       {saveError && (
         <div className="fixed inset-x-0 top-0 z-[120] bg-red-600 px-4 py-2 text-center text-[14px] font-medium text-white">
           Couldn’t save your latest changes ({saveError}). Export your resume as JSON from the ⋯ menu to keep a copy.
+        </div>
+      )}
+      {toast && (
+        <div role="status" className={`fixed bottom-20 left-1/2 z-[130] -translate-x-1/2 rounded-md px-4 py-2.5 text-[14px] font-medium shadow-lg ${toast.warn ? 'bg-amber-100 text-amber-900' : 'bg-ink text-white'}`}>
+          {toast.text}
         </div>
       )}
       <Sidebar view={editing ? view : view === 'new' ? 'new' : view === 'vault' ? 'vault' : view === 'integrations' ? 'integrations' : 'overview'} setView={setView} openCreate={openCreate} createTab={createTab} />

@@ -13,25 +13,24 @@ Tailoring a resume for every application is the advice everyone gives and nobody
 1. **Your history is the source of truth.** Every bullet you've written, across every version, lives in one deduplicated **vault**. Tailored resumes are assembled from it, never invented.
 2. **AI suggests; it doesn't invent.** Rewrites keep your facts and numbers, and server-side guards reject edits that don't. Missing metrics become `[X]` placeholders for you to fill.
 3. **Scores you can check.** The job match isn't a number an LLM made up: it's computed from requirement coverage, keywords and title fit, and shown piece by piece.
-4. **Local-first, bring your own AI.** No account, no cloud database. Resumes live in your browser; a small local server holds your key and talks to the provider you chose (OpenAI, Anthropic, Gemini, OpenRouter, Groq, or a model on your own computer), only when you ask.
+4. **Local-first, bring your own AI.** No account, no cloud database. Resumes live in your browser; a small local server holds your key and talks to the provider you chose (OpenAI, Anthropic or Gemini), only when you ask.
 
 ## Quickstart
 
-You need **Node.js 20+** and **git**. One line installs and starts everything:
+You need **Node.js 22+**, **git**, and Chrome (or Chromium, Edge, Brave) for one-click PDFs. One line installs and starts everything:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/abhishek17r/resume-builder/main/install.sh | sh
 ```
 
-Then open **http://localhost:5190**. AI features work in demo mode straight away. For the real thing, open **Integrations** in the app and connect your own AI:
+Then open **http://localhost:5190** and go to **Integrations** to connect your own AI. Every AI feature goes through the provider you connect there:
 
 | Provider | What you need |
 |---|---|
-| OpenAI, Anthropic, Google Gemini, OpenRouter, Groq | Your API key |
-| Ollama | Ollama running on your computer: nothing leaves your machine |
-| Any OpenAI-compatible API (LM Studio, vLLM, a company gateway…) | Its base URL (and key, if it needs one) |
+| OpenAI, Anthropic, Google Gemini | Your API key |
+| OpenRouter, Groq, Ollama, any OpenAI-compatible API | Coming soon |
 
-Test the connection, pick a model, and switch providers any time without restarting. Keys are saved by the local AI server on your computer (`api/.data/`, readable only by your user) and never stored in the browser. Prefer config files? `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `offerstack/api/.env` still works.
+Test the connection, pick a model, and switch providers any time without restarting. Keys are saved by the local AI server on your computer (`api/.data/`, readable only by your user) and never stored in the browser. Until you connect one, the editor, designs, vault and quality checks all work; AI features say they need a connection.
 
 <details>
 <summary>Manual install</summary>
@@ -40,7 +39,7 @@ Test the connection, pick a model, and switch providers any time without restart
 mkdir offerstack && cd offerstack
 git clone https://github.com/abhishek17r/resume-builder.git app
 git clone https://github.com/abhishek17r/resume-builder-api.git api
-(cd api && npm install && cp .env.example .env)
+(cd api && npm install)
 cd app && npm install
 npm run dev        # starts the app on :5190 and the AI server on :8787
 ```
@@ -65,7 +64,7 @@ npm run dev        # starts the app on :5190 and the AI server on :8787
 **Write and design**
 - Section editor with rich-text bullets, drag and drop, hidden entries, and quality markers from the checks.
 - Ten distinct templates, type pairings, density presets and **fit to one page**, plus fine control of every font, size, colour and spacing. Your last design becomes the default for new resumes.
-- A paginated preview that prints to PDF exactly as shown.
+- A paginated preview, and **Download PDF** saves `Name_Resume_ddmmyyyy(n).pdf` straight to your downloads, exactly as shown.
 
 **Import**
 - PDF, Word, text/Markdown, JSON backups, and LinkedIn (profile PDF or data export). Text, layout and design are read separately; choose a template or keep the original look.
@@ -94,7 +93,7 @@ flowchart LR
 | Picking content that doesn't exist | Composition returns references only; unknown or mismatched references are dropped |
 | A score that drifts between runs | The AI only labels each requirement; the number is computed deterministically from those labels plus exact keyword and title matches |
 
-No API key? Every endpoint has a demo mode with keyword heuristics, so the whole app works offline.
+Without a connected provider, AI endpoints return a clear "not connected" error and the app points you to Integrations. For development, `MOCK=1` runs the server in a keyword-heuristic demo mode.
 
 ## Architecture
 
@@ -104,7 +103,7 @@ flowchart LR
     UI[React app] <--> DB[(IndexedDB<br/>resumes + vault)]
   end
   UI -- only what a request needs --> API[Local AI server<br/>Node + Express]
-  API -- your key --> P[Your AI provider<br/>OpenAI · Anthropic · Gemini · OpenRouter · Groq · Ollama · any OpenAI-compatible]
+  API -- your key --> P[Your AI provider<br/>OpenAI · Anthropic · Gemini]
 ```
 
 - **App** (this repo): React 19, Vite, Tailwind, zustand. Custom paginated renderer; importers built on pdf.js and mammoth.

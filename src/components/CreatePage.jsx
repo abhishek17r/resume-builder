@@ -9,7 +9,9 @@ import { SECTION_TYPES } from '../lib/sections'
 import { importResumeFile, importLinkedIn, ACCEPT, LINKEDIN_ACCEPT } from '../lib/import'
 import { useLabels } from './ResumeLabel'
 import { LinkedInIcon } from './BrandIcons'
-import { post, health } from '../lib/api'
+import { post } from '../lib/api'
+import { useAi } from '../lib/useAi'
+import AiNotice from './AiNotice'
 import { composePayload, planFromVault, tailorPayload, buildFromVault, wholeVaultComposition, vaultHasContent } from '../lib/vault/compose'
 import { TEMPLATES, KEEP_ON_TEMPLATE, DEFAULT_TEMPLATE_ID } from '../lib/templates'
 import { DEFAULT_SETTINGS } from '../lib/defaults'
@@ -87,7 +89,8 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
     job: 'Job title – Company (from the job)',
   }[tab]
 
-  const canCreate = needsData ? false : importing ? imp.status === 'ready' : tab === 'job' ? jd.text.trim().length >= 80 && jd.status !== 'running' : true
+  const ai = useAi()
+  const canCreate = needsData ? false : importing ? imp.status === 'ready' : tab === 'job' ? ai.ready && jd.text.trim().length >= 80 && jd.status !== 'running' : true
 
   // Sync the vault → read the job → pick vault content → tailor it → build → score against the job.
   const buildFromJob = async () => {
@@ -255,8 +258,8 @@ export default function CreatePage({ initialTab = 'blank', onCancel, onCreated }
 function FromJob({ jd, setJd }) {
   const vault = useStore(s => s.vault)
   const syncVault = useStore(s => s.syncVault)
-  const [server, setServer] = useState(null)
-  useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const ai = useAi()
+  useEffect(() => { syncVault() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const bullets = vault.items.reduce((n, i) => n + i.bullets.length, 0)
   const running = jd.status === 'running'
   const p = vault.profile ?? {}
@@ -266,8 +269,9 @@ function FromJob({ jd, setJd }) {
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-soft px-3 py-2 text-[13px] text-muted">
         <span className="flex items-center gap-1.5"><Archive size={15} className="text-brand" /> Vault: {vault.items.length} entries · {bullets} bullets</span>
         <span>Contact details: {p.fullName || p.email ? [p.fullName, p.email].filter(Boolean).join(' · ') : 'none in your vault profile yet'}</span>
-        <span className="ml-auto">{server === false ? <span className="text-red-600">AI server offline</span> : server?.mock ? <span className="text-amber-700">Demo mode (no API key)</span> : server ? <span className="text-emerald-700">AI connected</span> : 'Checking AI server…'}</span>
+        <span className="ml-auto">{ai.state === 'offline' ? <span className="text-red-600">AI server offline</span> : ai.state === 'disconnected' ? <a href="#integrations" className="text-red-600 underline">AI not connected</a> : ai.state === 'demo' ? <span className="text-amber-700">Demo mode</span> : ai.state === 'ready' ? <span className="text-emerald-700">AI connected{ai.label ? ` · ${ai.label}` : ''}</span> : 'Checking AI…'}</span>
       </div>
+      <AiNotice what="build a resume for a job" className="mt-4" />
       <textarea className="field mt-4 min-h-[200px] text-[14px] leading-relaxed" disabled={running} placeholder="Paste the full job description: title, responsibilities and requirements."
         value={jd.text} onChange={e => setJd(j => ({ ...j, text: e.target.value }))} />
       <div className="mt-4 flex items-center gap-3">

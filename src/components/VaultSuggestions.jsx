@@ -73,7 +73,7 @@ export default function VaultSuggestions({ mode, onShow, serverDown }) {
         {mode === 'job' && cands.length > 0 && (
           <button onClick={askAi} disabled={ai.status === 'loading' || serverDown}
             className="ml-auto flex items-center gap-1.5 rounded-lg bg-field px-3 py-1.5 text-[13px] font-semibold text-ink hover:bg-slate-200 disabled:opacity-40"
-            title={serverDown ? 'AI server offline' : 'Let AI pick the bullets that best evidence this job’s requirements'}>
+            title={serverDown ? 'AI isn’t connected: open Integrations' : 'Let AI pick the bullets that best evidence this job’s requirements'}>
             {ai.status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
             {ai.status === 'loading' ? 'Picking…' : aiPicks ? 'Pick again with AI' : 'Pick with AI'}
           </button>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { sampleResume, blankResume, uid, blankEntry, DEFAULT_SETTINGS } from './defaults'
-import { idbStorage, onRemoteSave } from './storage'
+import { idbStorage, onRemoteSave, merge } from './storage'
 import { SECTION_TYPES } from './sections'
 import { applyEditTo } from './optimize/apply'
 import { emptyVault, syncVault, dismissKey, ruleTags, fingerprint, norm, vaultTags, tagKeywords } from './vault/sync'
@@ -15,6 +15,9 @@ const COALESCE_MS = 600
 // Every edit goes through `mutate`, which snapshots the current resume for undo.
 // Consecutive edits with the same `key` inside COALESCE_MS collapse into one step
 // so typing a word doesn't create one undo step per character.
+// What's saved (shared by every tab).
+const persisted = s => ({ resumes: s.resumes, vault: s.vault, designDefaults: s.designDefaults })
+
 export const useStore = create(
   persist(
     (set, get) => {
@@ -328,9 +331,11 @@ export const useStore = create(
     },
     {
       name: 'resume-builder',
-      storage: createJSONStorage(() => idbStorage),
+      // Saves are ignored until this store has loaded what's saved, so a starting (or hot-reloaded) copy
+      // of the store can never write its placeholder state over your resumes.
+      storage: createJSONStorage(() => ({ ...idbStorage, setItem: (name, value) => (useStore?.persist?.hasHydrated() ? idbStorage.setItem(name, value) : undefined) })),
       // Shared by every tab. Which resume is open is per tab (see OPEN_KEY), so tabs don't switch each other.
-      partialize: s => ({ resumes: s.resumes, vault: s.vault, designDefaults: s.designDefaults }),
+      partialize: s => persisted(s),
       // Fill in any settings added after a resume was first saved.
       merge: (persisted, current) => {
         const merged = { ...current, ...persisted }
@@ -354,21 +359,29 @@ useStore.subscribe((state, prev) => {
   if (state.currentId !== prev.currentId && state.currentId) try { localStorage.setItem(OPEN_KEY, state.currentId) } catch { /* private mode */ }
 })
 
-// Another tab saved: take its resumes, vault and design defaults, keep this tab's open resume.
-// Undo history is cleared when the resumes changed, so undo can't bring back (and save) an older copy.
-onRemoteSave(({ state: saved }) => {
+// Another tab saved (or a backup was restored): merge its copy with this tab's current state, resume by
+// resume, so edits on either side survive; keep this tab's open resume. Undo history is cleared when the
+// resumes changed, so undo can't bring back (and save) an older copy.
+onRemoteSave((theirs, base) => {
+  const s = useStore.getState()
+  let saved
+  try {
+    const ours = JSON.stringify({ state: persisted(s), version: 0 })
+    saved = JSON.parse(base ? merge(base, ours, theirs) : theirs).state
+  } catch { return }
   if (!saved?.resumes) return
-  useStore.setState(s => {
-    const resumesChanged = JSON.stringify(saved.resumes) !== JSON.stringify(s.resumes)
-    return {
-      resumes: saved.resumes,
-      vault: saved.vault ?? s.vault,
-      designDefaults: saved.designDefaults, // as saved (undefined stays undefined), so applying it doesn't trigger a save
-      currentId: saved.resumes.some(r => r.id === s.currentId) ? s.currentId : saved.resumes[0]?.id ?? null,
-      ...(resumesChanged ? { past: [], future: [] } : {}),
-    }
+  const resumesChanged = JSON.stringify(saved.resumes) !== JSON.stringify(s.resumes)
+  useStore.setState({
+    resumes: saved.resumes,
+    vault: saved.vault ?? s.vault,
+    designDefaults: saved.designDefaults,
+    currentId: saved.resumes.some(r => r.id === s.currentId) ? s.currentId : saved.resumes[0]?.id ?? null,
+    ...(resumesChanged ? { past: [], future: [] } : {}),
   })
 })
+
+// Editing store.js in development: reload the page instead of running a second copy of the store.
+if (import.meta.hot) import.meta.hot.accept(() => location.reload())
 
 const mapBullet = (vault, itemId, bulletId, fn) => ({
   ...vault,

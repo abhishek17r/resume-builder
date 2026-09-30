@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FileText, Paintbrush, Gauge, Archive, Download, MoreHorizontal, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson,
-  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen, Plug, Check,
+  GitBranch, Tag, Home, Files, Target, HardDrive, Menu as MenuIcon, X, PanelLeftClose, PanelLeftOpen, Plug, Check, History,
 } from 'lucide-react'
 import { useStore, useResume } from '../lib/store'
-import { useServerStatus } from '../lib/useServerStatus'
+import { useAi } from '../lib/useAi'
 import { onSaveResult } from '../lib/storage'
 import { APP_NAME } from '../config/app'
 import { LinkedInIcon } from './BrandIcons'
+import BackupsDialog from './BackupsDialog'
 
 // The app's frame: a left sidebar on desktop (a compact bar with a drawer on small screens).
 
@@ -143,10 +144,13 @@ function RailBtn({ title, active, dark, children, ...p }) {
   )
 }
 
+const AI_DOT = { checking: 'bg-slate-300', offline: 'bg-red-500', disconnected: 'bg-red-500', demo: 'bg-amber-500', ready: 'bg-emerald-600' }
+const AI_TEXT = { checking: 'Checking AI…', offline: 'AI server offline', disconnected: 'AI not connected · connect', demo: 'AI in demo mode' }
+
 function LocalDot() {
-  const server = useServerStatus()
-  const dot = server === null ? 'bg-slate-300' : server === false ? 'bg-red-500' : server.mock ? 'bg-amber-500' : 'bg-emerald-600'
-  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode' : `AI · ${server.label ?? server.provider} · ${server.model}`
+  const ai = useAi()
+  const dot = AI_DOT[ai.state]
+  const text = ai.state === 'ready' ? `AI · ${ai.label} · ${ai.model}` : AI_TEXT[ai.state]
   return <span title={`Saved in this browser · ${text}`} className={clsx('mb-1 h-[7px] w-[7px] rounded-full', dot)} />
 }
 
@@ -163,13 +167,13 @@ function NavItem({ icon: Icon, active, count, children, ...p }) {
 
 // Where things live: resumes in this browser, AI through the local server.
 function LocalStatus({ onOpen }) {
-  const server = useServerStatus()
-  const dot = server === null ? 'bg-slate-300' : server === false ? 'bg-red-500' : server.mock ? 'bg-amber-500' : 'bg-emerald-600'
-  const text = server === null ? 'Checking AI server…' : server === false ? 'AI server offline' : server.mock ? 'AI in demo mode · set up' : `AI · ${server.model ?? server.provider}`
+  const ai = useAi()
+  const dot = AI_DOT[ai.state]
+  const text = ai.state === 'ready' ? `AI · ${ai.label ?? ai.model}` : AI_TEXT[ai.state]
   return (
     <div className="mt-auto border-t border-rule px-5 py-4">
       <p className="flex items-center gap-2 text-[12.5px] text-body"><HardDrive size={13} className="text-muted" /> Saved in this browser</p>
-      <button onClick={onOpen} className="mt-1.5 flex w-full items-center gap-2 text-left text-[12.5px] text-body hover:text-ink" title={server === false ? 'Start it with npm run dev' : 'AI provider settings'}>
+      <button onClick={onOpen} className="mt-1.5 flex w-full items-center gap-2 text-left text-[12.5px] text-body hover:text-ink" title={ai.state === 'offline' ? 'Start it with npm run dev' : ai.state === 'ready' ? `${ai.label} · ${ai.model}` : 'Connect an AI provider'}>
         <span className={clsx('ml-[3px] h-[7px] w-[7px] shrink-0 rounded-full', dot)} /> <span className="truncate">{text}</span>
       </button>
     </div>
@@ -190,7 +194,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
   const ref = useRef(null)
 
   useEffect(() => {
-    const close = e => ref.current && !ref.current.contains(e.target) && setMenu(null)
+    const close = e => ref.current && !ref.current.contains(e.target) && setMenu(m => (m === 'backups' ? m : null)) // the dialog closes itself
     window.addEventListener('mousedown', close)
     return () => window.removeEventListener('mousedown', close)
   }, [])
@@ -206,6 +210,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
 
   return (
     <header ref={ref} className="z-30 shrink-0 border-b border-rule bg-canvas/95 px-4 backdrop-blur sm:px-8">
+      {menu === 'backups' && <BackupsDialog onClose={() => setMenu(null)} />}
       <div className="flex items-center gap-3 pt-4">
         <div className="relative min-w-0">
           <div className="flex items-center gap-1.5 text-[13px] text-muted">
@@ -251,6 +256,7 @@ export function EditorHeader({ view, setView, onDownload, openCreate }) {
                 <MenuItem icon={Pencil} onClick={() => { const n = prompt('Rename resume', resume.name); if (n?.trim()) renameResume(resume.id, n.trim()); setMenu(null) }}>Rename</MenuItem>
                 <MenuItem icon={Tag} onClick={() => { const l = prompt('Label (leave empty to remove), e.g. "b2c - google"', resume.label ?? ''); if (l !== null) setLabel(resume.id, l); setMenu(null) }}>{resume.label ? 'Edit label' : 'Add label'}</MenuItem>
                 <MenuItem icon={FileJson} onClick={() => { exportJson(); setMenu(null) }}>Export as JSON</MenuItem>
+                <MenuItem icon={History} onClick={() => setMenu('backups')}>Restore an earlier version…</MenuItem>
                 <div className="my-1 border-t border-rule" />
                 <MenuItem icon={Trash2} danger onClick={() => { if (confirm(`Delete "${resume.name}"?`)) deleteResume(resume.id); setMenu(null) }}>Delete resume</MenuItem>
               </Menu>

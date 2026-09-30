@@ -4,7 +4,9 @@ import { Search, RefreshCw, Sparkles, Plus, Trash2, Loader2, Tag, X, LayoutList,
 import { useStore } from '../lib/store'
 import { VAULT_KINDS } from '../config/taxonomy'
 import { useVaultTags } from '../lib/vault/useVaultTags'
-import { post, health } from '../lib/api'
+import { post } from '../lib/api'
+import { useAi } from '../lib/useAi'
+import AiNotice from './AiNotice'
 import { scoreVault, scoreBg } from '../lib/vault/score'
 import { autoFixText } from '../lib/optimize/rules'
 import { Ring } from './OptimizePanel'
@@ -22,7 +24,8 @@ export default function VaultPage() {
   const [q, setQ] = useState('')
   const [view, setView] = useState('list')
   const [tagging, setTagging] = useState({ status: 'idle' })
-  const [server, setServer] = useState(null)
+  const ai = useAi()
+  const server = ai.ready ? ai : ai.state === 'checking' ? null : false // false: AI can't be used
   const [needsWorkOnly, setNeedsWorkOnly] = useState(false)
   const { tags: TAGS } = useVaultTags()
   const resumes = useStore(s => s.resumes)
@@ -30,7 +33,7 @@ export default function VaultPage() {
   const [newTag, setNewTag] = useState('')
   const [finding, setFinding] = useState({ status: 'idle' })
 
-  useEffect(() => { syncVault(); health().then(h => setServer(h ?? false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { syncVault() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = vault.items
   const scores = useMemo(() => scoreVault(vault), [vault])
@@ -64,7 +67,7 @@ export default function VaultPage() {
           taxonomy: TAGS.map(({ id, label, description }) => ({ id, label, description })),
           bullets: batch.map(({ item, b }) => ({ ref: b.id, text: b.text, context: [KIND_LABEL[item.kind], item.title, b.role].filter(Boolean).join(' · ') })),
         })
-        if (data.mock) { setTagging({ status: 'error', error: 'The AI server is in demo mode (no API key), so keyword tags were kept.' }); return }
+        if (data.mock) { setTagging({ status: 'error', error: 'The AI server is in demo mode, so keyword tags were kept.' }); return }
         const updates = data.tags.map(t => ({ bulletId: t.ref, tags: t.tagIds }))
         useStore.getState().setVaultTags(updates)
         applied += updates.length
@@ -85,7 +88,7 @@ export default function VaultPage() {
         .map(a => ({ title: a.title, requirements: a.requirements.map(q => q.text).slice(0, 40) })).slice(0, 20)
       const bullets = allBullets.filter(({ item }) => item.kind !== 'skills' && item.kind !== 'summaries').map(({ b }) => b.text).slice(0, 150)
       const data = await post('/api/vault/suggest-tags', { existing: TAGS.map(t => t.label), jobs, bullets })
-      if (data.mock) { setFinding({ status: 'error', error: 'The AI server is in demo mode (no API key). Tags are still inferred from your bullets automatically.' }); return }
+      if (data.mock) { setFinding({ status: 'error', error: 'The AI server is in demo mode. Tags are still inferred from your bullets automatically.' }); return }
       const added = data.tags.map(t => addVaultTag({ ...t, source: 'ai' })).filter(Boolean)
       setFinding({ status: 'done', added: data.tags.map(t => t.label), count: added.length })
     } catch (e) {
@@ -105,6 +108,7 @@ export default function VaultPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 pb-24">
+      <AiNotice what="use AI tagging or rewrites (everything else in the vault works)" className="mb-6" />
       <div className="mb-6 flex flex-wrap items-end gap-4 border-b border-rule pb-6">
         <div>
           <h1 className="display text-[40px] leading-none text-ink">Vault</h1>
@@ -125,7 +129,7 @@ export default function VaultPage() {
           </button>
           <button onClick={() => aiTag(true)} disabled={tagging.status === 'loading' || server === false || !byRules}
             className="flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-[14px] font-medium text-white hover:bg-ink/85 disabled:opacity-40"
-            title={server === false ? 'AI server offline' : 'Refine keyword tags with AI (your own tags are never changed)'}>
+            title={server === false ? 'AI isn’t connected: open Integrations' : 'Refine keyword tags with AI (your own tags are never changed)'}>
             {tagging.status === 'loading' ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
             {tagging.status === 'loading' ? `Tagging ${tagging.done}/${tagging.total}…` : `AI tag ${byRules} bullets`}
           </button>
@@ -165,7 +169,7 @@ export default function VaultPage() {
               <span className="text-[12px] text-muted">· added automatically when your bullets or job descriptions show a theme (✦)</span>
               <button onClick={findTags} disabled={finding.status === 'loading' || server === false}
                 className="ml-auto flex items-center gap-1.5 rounded-md border border-rule bg-white px-2.5 py-1 text-[12px] font-medium text-ink hover:border-ink/40 disabled:opacity-40"
-                title={server === false ? 'AI server offline' : 'Suggest new tags from your bullets and the jobs you target'}>
+                title={server === false ? 'AI isn’t connected: open Integrations' : 'Suggest new tags from your bullets and the jobs you target'}>
                 {finding.status === 'loading' ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Find tags with AI
               </button>
             </div>
@@ -516,7 +520,7 @@ function BulletIssues({ item, b, result, server }) {
               <div className="flex shrink-0 gap-1.5">
                 {i.fix && <MiniBtn icon={Check} primary onClick={() => updateVaultBullet(item.id, b.id, { text: autoFixText(i.fix, b.text) })}>Fix</MiniBtn>}
                 {i.ai && <MiniBtn icon={r?.status === 'loading' ? Loader2 : Wand2} spin={r?.status === 'loading'} disabled={server === false || r?.status === 'loading'}
-                  title={server === false ? 'AI server offline' : 'Ask AI for an honest rewrite'} onClick={() => suggest(i)}>Suggest rewrite</MiniBtn>}
+                  title={server === false ? 'AI isn’t connected: open Integrations' : 'Ask AI for an honest rewrite'} onClick={() => suggest(i)}>Suggest rewrite</MiniBtn>}
                 <MiniBtn icon={EyeOff} onClick={() => ignoreVaultIssue(item.id, b.id, i.check)} title="Don’t count this against the bullet">Ignore</MiniBtn>
               </div>
             </div>

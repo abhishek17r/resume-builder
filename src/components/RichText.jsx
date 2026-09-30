@@ -22,10 +22,14 @@ export default function RichText({ value, onChange, placeholder }) {
   const ref = useRef(null)
   const [active, setActive] = useState({})
 
-  // Only push outside value into the DOM when it differs (e.g. undo), so the caret isn't reset while typing.
+  // Only push outside values into the DOM (undo, another tab, a suggestion accepted). Our own edits come
+  // back sanitised and may differ slightly from the live HTML; rewriting the DOM then would move the
+  // caret mid-typing and could drop what was typed in between.
+  const emitted = useRef(null)
   useEffect(() => {
     const el = ref.current
-    if (el && el.innerHTML !== (value || '')) el.innerHTML = value || ''
+    if (!el || value === emitted.current) return
+    if (el.innerHTML !== (value || '')) el.innerHTML = value || ''
   }, [value])
 
   const refreshActive = () => {
@@ -47,7 +51,10 @@ export default function RichText({ value, onChange, placeholder }) {
     refreshActive()
   }
 
-  const emit = () => onChange(sanitize(ref.current.innerHTML))
+  const emit = () => {
+    emitted.current = sanitize(ref.current.innerHTML)
+    onChange(emitted.current)
+  }
 
   const onPaste = e => {
     e.preventDefault()

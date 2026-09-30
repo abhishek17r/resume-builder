@@ -5,9 +5,9 @@ import { request } from '../lib/api'
 import { refreshServerStatus } from '../lib/useServerStatus'
 import { PageHeader, Button } from './Overview'
 
-// Bring your own AI: connect a provider (OpenAI, Anthropic, Gemini, OpenRouter, Groq, Ollama or any
-// OpenAI-compatible endpoint), test it, and choose which one Offerstack uses. Keys go to the local AI
-// server on this computer and are never stored in the browser or shown again.
+// Bring your own AI: every AI feature in Offerstack goes through the provider connected here (OpenAI,
+// Anthropic or Gemini, with your own API key). Keys go to the local AI server on this computer and are
+// never stored in the browser or shown again. More providers are listed as coming soon.
 export default function IntegrationsPage() {
   const [data, setData] = useState(null) // { integrations, current } | { offline, error }
   const [open, setOpen] = useState(null)
@@ -22,7 +22,7 @@ export default function IntegrationsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 pb-28">
-      <PageHeader title="Integrations" sub="Bring your own AI. Connect a provider with your own key, or a model running on your computer." />
+      <PageHeader title="Integrations" sub="Bring your own AI. Every AI feature in Offerstack uses the provider you connect here." />
 
       {data.offline ? (
         <div className="card flex gap-3 p-5 text-[14px]">
@@ -34,23 +34,23 @@ export default function IntegrationsPage() {
         </div>
       ) : (
         <>
-          <InUse current={data.current} onUseEnv={async () => apply(await request('POST', '/api/integrations/active', { id: null }))} anyActive={data.integrations.some(i => i.active)} />
-
-          <h2 className="display mb-3 mt-10 text-[26px] text-ink">AI providers</h2>
-          <div className="card divide-y divide-rule">
-            {data.integrations.map(i => (
+          <h2 className="display mb-3 text-[26px] text-ink">AI API key</h2>
+          <InUse current={data.current} onDisconnect={async () => apply(await request('POST', '/api/integrations/active', { id: null }))} />
+          <div className="card mt-3 divide-y divide-rule">
+            {data.integrations.filter(i => !i.soon).map(i => (
               <Provider key={i.id} it={i} open={open === i.id} onToggle={() => setOpen(o => (o === i.id ? null : i.id))} onChange={apply} />
             ))}
           </div>
 
           <p className="mt-4 flex items-start gap-2 text-[13px] text-muted">
             <ShieldCheck size={15} className="mt-0.5 shrink-0 text-brand" />
-            Keys are saved by your local AI server in <code className="meta">api/.data/integrations.json</code> on this computer (readable only by your user account). They are never stored in the browser, shown again, or sent anywhere except to the provider you choose.
+            <span>Keys are saved by your local AI server in <code className="meta">api/.data/integrations.json</code> on this computer (readable only by your user account). They are never stored in the browser, shown again, or sent anywhere except to the provider you choose.</span>
           </p>
 
-          <h2 className="display mb-3 mt-10 text-[26px] text-ink">Coming next</h2>
+          <h2 className="display mb-3 mt-10 text-[26px] text-ink">Coming soon</h2>
           <div className="card divide-y divide-rule text-[14px]">
             {[
+              ...data.integrations.filter(i => i.soon).map(i => [i.label, i.blurb]),
               ['Claude (MCP)', 'Edit and style your resumes from a conversation with Claude, live in the preview.'],
               ['Job boards', 'Save job descriptions from LinkedIn and other boards in one click.'],
             ].map(([name, text]) => (
@@ -58,7 +58,7 @@ export default function IntegrationsPage() {
                 <Circle size={8} className="shrink-0 fill-rule text-rule" />
                 <span className="font-medium text-ink">{name}</span>
                 <span className="text-muted">{text}</span>
-                <span className="meta ml-auto shrink-0 text-muted">planned</span>
+                <span className="meta ml-auto shrink-0 text-muted">soon</span>
               </div>
             ))}
           </div>
@@ -68,26 +68,31 @@ export default function IntegrationsPage() {
   )
 }
 
-function InUse({ current, anyActive, onUseEnv }) {
-  const tone = current.mock ? 'bg-amber-500' : 'bg-emerald-600'
+function InUse({ current, onDisconnect }) {
+  const tone = current.connected ? 'bg-emerald-600' : current.mock ? 'bg-amber-500' : 'bg-red-500'
   return (
     <div className="card flex flex-wrap items-center gap-4 p-5">
       <span className={clsx('h-2.5 w-2.5 rounded-full', tone)} />
       <div className="min-w-0 flex-1">
         <p className="meta uppercase tracking-[0.08em] text-muted">In use</p>
-        {current.mock ? (
+        {current.connected ? (
+          <>
+            <p className="text-[16px] font-medium text-ink">{current.label} <span className="meta font-normal text-muted">· {current.model}</span></p>
+            <p className="text-[13px] text-muted">All AI features (tailoring, job match, rewrites, tags) use this provider.</p>
+          </>
+        ) : current.mock ? (
           <>
             <p className="text-[16px] font-medium text-ink">Demo mode</p>
-            <p className="text-[13px] text-muted">No AI provider is set up, so AI features use simple keyword rules. Set one up below.</p>
+            <p className="text-[13px] text-muted">The AI server was started in demo mode, so AI features use simple keyword rules.</p>
           </>
         ) : (
           <>
-            <p className="text-[16px] font-medium text-ink">{current.label} <span className="meta font-normal text-muted">· {current.model}</span></p>
-            <p className="text-[13px] text-muted">{current.source === 'env' ? 'From the AI server’s .env file. Set up a provider below to switch without editing files.' : 'Chosen on this page.'}</p>
+            <p className="text-[16px] font-medium text-ink">Not connected</p>
+            <p className="text-[13px] text-muted">AI features are off. Add a key for OpenAI, Anthropic or Gemini below, test it, and choose it.</p>
           </>
         )}
       </div>
-      {anyActive && <Button onClick={onUseEnv} title="Stop using the provider chosen here; fall back to the .env file, or demo mode">Use .env / demo instead</Button>}
+      {current.connected && <Button onClick={onDisconnect} title="Stop using this provider (its key stays saved)">Disconnect</Button>}
     </div>
   )
 }
@@ -95,18 +100,16 @@ function InUse({ current, anyActive, onUseEnv }) {
 function Provider({ it, open, onToggle, onChange }) {
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(it.model || it.models[0] || '')
-  const [baseURL, setBaseURL] = useState(it.baseURL || '')
   const [busy, setBusy] = useState(null) // 'save' | 'test' | 'active' | 'remove'
   const [result, setResult] = useState(null) // { ok, latencyMs, error, models }
   const [error, setError] = useState(null)
-  const compatible = it.kind === 'openai-compatible'
   const models = [...new Set([...(result?.models ?? []), ...it.models])]
 
   const act = async (kind, fn) => {
     setBusy(kind); setError(null)
     try { await fn() } catch (e) { setError(e.message) } finally { setBusy(null) }
   }
-  const save = () => request('PUT', `/api/integrations/${it.id}`, { ...(apiKey ? { apiKey } : {}), model, ...(compatible ? { baseURL } : {}) }).then(d => { onChange(d); setApiKey('') })
+  const save = () => request('PUT', `/api/integrations/${it.id}`, { ...(apiKey ? { apiKey } : {}), model }).then(d => { onChange(d); setApiKey('') })
   const test = async () => {
     setResult(null)
     await save()
@@ -132,23 +135,16 @@ function Provider({ it, open, onToggle, onChange }) {
 
       {open && (
         <div className="space-y-4 border-t border-rule bg-soft/60 px-5 py-5">
-          {(it.needsKey || it.id === 'custom') && (
+          {it.needsKey && (
             <label className="block">
-              <span className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.06em] text-muted">API key {!it.needsKey && <span className="normal-case tracking-normal">(if your endpoint needs one)</span>}
-                {it.keyUrl && it.needsKey && <a href={it.keyUrl} target="_blank" rel="noreferrer" className="ml-auto flex items-center gap-1 normal-case tracking-normal text-brand hover:underline">Get a key <ExternalLink size={11} /></a>}
+              <span className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.06em] text-muted">API key
+                {it.keyUrl && <a href={it.keyUrl} target="_blank" rel="noreferrer" className="ml-auto flex items-center gap-1 normal-case tracking-normal text-brand hover:underline">Get a key <ExternalLink size={11} /></a>}
               </span>
               <div className="relative">
                 <KeyRound size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <input type="password" autoComplete="off" spellCheck={false} value={apiKey} onChange={e => setApiKey(e.target.value)}
                   placeholder={it.hasKey ? `Saved (${it.keyHint}). Paste a new key to replace it` : 'Paste your API key'} className="field pl-9 font-mono text-[13px]" />
               </div>
-            </label>
-          )}
-          {compatible && (
-            <label className="block">
-              <span className="label">Endpoint (base URL)</span>
-              <input value={baseURL} onChange={e => setBaseURL(e.target.value)} placeholder="https://…/v1" className="field font-mono text-[13px]" />
-              {it.id === 'ollama' && <span className="mt-1 block text-[12px] text-muted">Install Ollama, run <code className="meta">ollama pull llama3.1</code>, and keep it running. Larger models give better results.</span>}
             </label>
           )}
           <label className="block">

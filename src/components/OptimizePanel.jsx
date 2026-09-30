@@ -7,7 +7,9 @@ import {
 import { useStore, useResume } from '../lib/store'
 import { analyzeQuality, GROUPS } from '../lib/optimize/rules'
 import { resumeToPayload, refKey } from '../lib/optimize/serialize'
-import { post, health } from '../lib/api'
+import { post } from '../lib/api'
+import { useAi } from '../lib/useAi'
+import AiNotice from './AiNotice'
 import VaultSuggestions from './VaultSuggestions'
 import { jobScore, JOB_WEIGHTS } from '../lib/optimize/jobScore'
 
@@ -82,17 +84,10 @@ function ErrorNote({ error }) {
   return <div className="flex gap-2 rounded-lg bg-red-50 p-3 text-[13px] text-red-700"><AlertCircle size={16} className="mt-0.5 shrink-0" /> {error}</div>
 }
 
-function useServer() {
-  const [status, setStatus] = useState(null) // null = checking, false = offline, {mock}
-  useEffect(() => { health().then(h => setStatus(h ?? false)) }, [])
-  return status
-}
-
-function ServerBadge({ status }) {
-  if (status === null) return null
-  if (status === false) return <span className="rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-700">AI server offline</span>
-  if (status.mock) return <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-medium text-amber-700" title="The server has no Claude API key; results are keyword heuristics.">Demo mode</span>
-  return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-700">AI connected</span>
+function AiBadge({ ai }) {
+  if (ai.state === 'demo') return <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-medium text-amber-700" title="The server was started in demo mode; results are keyword heuristics.">Demo mode</span>
+  if (ai.state === 'ready') return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-700" title={`${ai.label ?? ''} · ${ai.model ?? ''}`}>AI connected</span>
+  return null
 }
 
 // Before/after card with Accept / Edit / Dismiss. `after` text may contain [X] placeholders.
@@ -141,7 +136,7 @@ function QualityTab({ onShow }) {
   const [showIgnored, setShowIgnored] = useState(false)
   const [rewrites, setRewrites] = useState({}) // issueId → { status, after, reason, error }
   const [batch, setBatch] = useState({ status: 'idle' })
-  const server = useServer()
+  const ai = useAi()
 
   // Score without ignored issues.
   const active = result.issues.filter(i => !ignored.has(i.id))
@@ -211,12 +206,13 @@ function QualityTab({ onShow }) {
       </div>
 
       <div className="card p-6">
+        <AiNotice what="get AI rewrites (the checks and one-click fixes still work)" className="mb-4" />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h3 className="text-[18px] font-bold text-ink">{showIgnored ? 'Ignored' : 'Issues'} <span className="font-normal text-muted">({list.length})</span></h3>
           <div className="ml-auto flex items-center gap-2">
-            <ServerBadge status={server} />
+            <AiBadge ai={ai} />
             {aiTargets.length > 0 && !showIgnored && (
-              <Btn primary icon={batch.status === 'loading' ? Loader2 : Sparkles} disabled={batch.status === 'loading' || server === false} onClick={improveAll}
+              <Btn primary icon={batch.status === 'loading' ? Loader2 : Sparkles} disabled={batch.status === 'loading' || !ai.ready} onClick={improveAll}
                 title="Ask AI to rewrite every flagged bullet (up to 20)">
                 {batch.status === 'loading' ? 'Rewriting…' : `Rewrite ${Math.min(aiTargets.length, 20)} bullets`}
               </Btn>
@@ -238,7 +234,7 @@ function QualityTab({ onShow }) {
         ) : (
           <div className="space-y-2.5">
             {list.map(issue => (
-              <IssueRow key={issue.id} issue={issue} resume={resume} ignored={ignored.has(issue.id)} rewrite={rewrites[issue.id]} serverDown={server === false}
+              <IssueRow key={issue.id} issue={issue} resume={resume} ignored={ignored.has(issue.id)} rewrite={rewrites[issue.id]} serverDown={!ai.ready}
                 onFix={() => applyEdit({ kind: 'autofix', fix: issue.fix, target: issue.target })}
                 onRewrite={() => requestRewrites([issue]).catch(() => {})}
                 onAcceptRewrite={text => { applyEdit({ kind: 'rewrite_bullet', target: issue.target, after: text }); setRewrites(r => ({ ...r, [issue.id]: { ...r[issue.id], status: 'accepted' } })) }}
@@ -254,7 +250,7 @@ function QualityTab({ onShow }) {
           </button>
         )}
       </div>
-      <VaultSuggestions mode="quality" onShow={onShow} serverDown={server === false} />
+      <VaultSuggestions mode="quality" onShow={onShow} serverDown={!ai.ready} />
     </>
   )
 }
@@ -418,7 +414,7 @@ function JobTab({ onShow }) {
   const [text, setText] = useState(job.text ?? '')
   const [busy, setBusy] = useState(null) // 'analyze' | 'suggest'
   const [error, setError] = useState(null)
-  const server = useServer()
+  const ai = useAi()
 
   useEffect(() => { setText(resume.optimize?.job?.text ?? '') }, [resume.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -484,13 +480,14 @@ function JobTab({ onShow }) {
       <div className="card p-6">
         <div className="mb-3 flex items-center gap-2">
           <h3 className="text-[18px] font-bold text-ink">Job description</h3>
-          <span className="ml-auto"><ServerBadge status={server} /></span>
+          <span className="ml-auto"><AiBadge ai={ai} /></span>
         </div>
+        <AiNotice what="analyse a job description" className="mb-3" />
         <textarea className="field min-h-[180px] text-[14px] leading-relaxed" placeholder="Paste the full job description: title, responsibilities and requirements."
           value={text} onChange={e => setText(e.target.value)} />
         <p className="mt-2 text-[12px] text-muted">Your resume and this job description are sent to the AI server only when you click Analyze.</p>
         <div className="mt-3 flex items-center gap-2">
-          <Btn primary icon={busy === 'analyze' ? Loader2 : Target} disabled={busy || text.trim().length < 80 || server === false} onClick={analyze}>
+          <Btn primary icon={busy === 'analyze' ? Loader2 : Target} disabled={busy || text.trim().length < 80 || !ai.ready} onClick={analyze}>
             {busy === 'analyze' ? 'Analyzing…' : job.analysis ? 'Analyze again' : 'Analyze match'}
           </Btn>
           {text.trim().length > 0 && text.trim().length < 80 && <span className="text-[12px] text-muted">Paste the full description (a few sentences at least).</span>}
@@ -507,7 +504,7 @@ function JobTab({ onShow }) {
               <p className="text-[18px] font-bold text-ink">{job.analysis.title}</p>
               <p className="text-[14px] text-muted">{[job.analysis.company, job.analysis.seniority !== 'unknown' && job.analysis.seniority].filter(Boolean).join(' · ')}</p>
               <p className="mt-1 text-[13px] text-body">{job.analysis.summary}</p>
-              {job.mock && <p className="mt-1 text-[12px] font-medium text-amber-700">Demo mode: keyword matching only. Add an API key on the server for real analysis.</p>}
+              {job.mock && <p className="mt-1 text-[12px] font-medium text-amber-700">Demo mode: keyword matching only. Connect an AI provider on the Integrations page for real analysis.</p>}
             </div>
           </div>
           <MatchBreakdown score={score} />
@@ -577,7 +574,7 @@ function JobTab({ onShow }) {
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <h3 className="text-[18px] font-bold text-ink">Tailoring suggestions</h3>
             <div className="ml-auto flex gap-2">
-              <Btn primary={!job.suggestions} icon={busy === 'suggest' ? Loader2 : Sparkles} disabled={busy || server === false} onClick={suggest}>
+              <Btn primary={!job.suggestions} icon={busy === 'suggest' ? Loader2 : Sparkles} disabled={busy || !ai.ready} onClick={suggest}>
                 {busy === 'suggest' ? 'Thinking…' : job.suggestions ? 'Suggest again' : 'Suggest edits'}
               </Btn>
             </div>
@@ -604,7 +601,7 @@ function JobTab({ onShow }) {
           )}
         </div>
       )}
-      {job.analysis && job.match && <VaultSuggestions mode="job" onShow={onShow} serverDown={server === false} />}
+      {job.analysis && job.match && <VaultSuggestions mode="job" onShow={onShow} serverDown={!ai.ready} />}
     </>
   )
 }

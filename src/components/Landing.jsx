@@ -131,8 +131,8 @@ export default function Landing({ onOpen, onImport, onJob }) {
 
 const STEPS = [
   ['Install and start', `${INSTALL_CMD}\n# gets the app and the AI server, installs both, starts them`],
-  ['Open it', '# http://localhost:5190\n# works straight away; AI features run in demo mode'],
-  ['Connect your AI (optional)', '# Integrations page in the app: OpenAI, Anthropic, Gemini,\n# OpenRouter, Groq, Ollama (local) or any OpenAI-compatible API'],
+  ['Open it', '# http://localhost:5190\n# editing, designs and the vault work straight away'],
+  ['Connect your AI', '# Integrations page in the app: paste an OpenAI,\n# Anthropic or Gemini API key, test it, done'],
   ['Start again later', 'cd offerstack/app && npm run dev'],
 ]
 
@@ -140,7 +140,7 @@ function LocalSetup() {
   const server = useServerStatus()
   const [copied, setCopied] = useState(null)
   const copy = (i, text) => { navigator.clipboard?.writeText(text.split('\n').filter(l => !l.trim().startsWith('#')).map(l => l.replace(/\s+#.*$/, '')).join('\n')); setCopied(i); setTimeout(() => setCopied(null), 1500) }
-  const ai = server === null ? ['Checking…', 'text-muted'] : server === false ? ['Not running: start it with npm run dev', 'text-red-600'] : server.mock ? ['Running in demo mode (no API key)', 'text-amber-700'] : [`Running · ${server.provider} · ${server.model}`, 'text-emerald-700']
+  const ai = server === null ? ['Checking…', 'text-muted'] : server === false ? ['Not running: start it with npm run dev', 'text-red-600'] : server.mock ? ['Running in demo mode', 'text-amber-700'] : !server.connected ? ['Running · connect your AI on the Integrations page', 'text-amber-700'] : [`Running · ${server.label ?? server.provider} · ${server.model}`, 'text-emerald-700']
 
   return (
     <section id="local" className="bg-ink text-canvas">
@@ -148,10 +148,10 @@ function LocalSetup() {
         <div>
           <h2 className="display text-[40px] leading-tight">Runs on your machine</h2>
           <p className="mt-4 leading-relaxed text-canvas/75">
-            Two small parts: the app, which keeps your resumes in this browser’s storage, and a local AI server that holds your API key and talks to OpenAI or Anthropic only when you ask it to.
+            Two small parts: the app, which keeps your resumes in this browser’s storage, and a local AI server that holds your API key and talks to OpenAI, Anthropic or Gemini only when you ask it to.
           </p>
           <ul className="mt-6 space-y-2.5 text-[14px] text-canvas/85">
-            {['No account, no cloud database, no tracking', 'Your key stays in a local .env file', 'Export any resume as JSON or PDF, any time'].map(t => (
+            {['No account, no cloud database, no tracking', 'Your API key stays on your computer', 'Export any resume as JSON or PDF, any time'].map(t => (
               <li key={t} className="flex items-center gap-2.5"><Check size={15} className="text-[#8fd1b0]" /> {t}</li>
             ))}
           </ul>
@@ -159,7 +159,7 @@ function LocalSetup() {
             <p className="meta mb-2.5 uppercase tracking-[0.08em] text-canvas/50">This machine</p>
             <p className="flex items-center gap-2"><Circle size={9} className="fill-emerald-500 text-emerald-500" /> App: running</p>
             <p className="mt-1.5 flex items-center gap-2">
-              <Circle size={9} className={server ? (server.mock ? 'fill-amber-500 text-amber-500' : 'fill-emerald-500 text-emerald-500') : server === false ? 'fill-red-500 text-red-500' : 'fill-slate-500 text-slate-500'} />
+              <Circle size={9} className={server ? (server.mock || !server.connected ? 'fill-amber-500 text-amber-500' : 'fill-emerald-500 text-emerald-500') : server === false ? 'fill-red-500 text-red-500' : 'fill-slate-500 text-slate-500'} />
               AI server: <span className={clsx('text-canvas/85', server === false && 'text-[#f5a3a3]')}>{ai[0]}</span>
             </p>
           </div>

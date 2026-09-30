@@ -13,10 +13,10 @@ API_REPO="${OFFERSTACK_API_REPO:-https://github.com/abhishek17r/resume-builder-a
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "Offerstack needs $1 — $2"; exit 1; }; }
 need git "install it from https://git-scm.com"
-need node "install Node.js 20 or newer from https://nodejs.org"
+need node "install Node.js 22 or newer from https://nodejs.org"
 need npm "it comes with Node.js"
 major=$(node -p 'process.versions.node.split(".")[0]')
-[ "$major" -ge 20 ] || { echo "Offerstack needs Node.js 20 or newer (you have $(node -v))."; exit 1; }
+[ "$major" -ge 22 ] || { echo "Offerstack needs Node.js 22 or newer (you have $(node -v))."; exit 1; }
 
 mkdir -p "$DIR"
 cd "$DIR"
@@ -37,8 +37,7 @@ HERE=$(pwd)
 echo
 echo "✓ Offerstack is installed in $HERE"
 echo "  • Open http://localhost:5190 once it starts"
-echo "  • AI features: put OPENAI_API_KEY or ANTHROPIC_API_KEY in $HERE/api/.env"
-echo "    (without a key they run in demo mode)"
+echo "  • AI features: open Integrations in the app and connect OpenAI, Anthropic or Gemini"
 echo "  • Start again later: cd $HERE/app && npm run dev"
 echo
 
