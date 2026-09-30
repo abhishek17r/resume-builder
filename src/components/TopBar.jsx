@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FileText, Paintbrush, Gauge, Archive, Download, MoreHorizontal, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson,
@@ -14,14 +14,15 @@ import BackupsDialog from './BackupsDialog'
 // The app's frame: a left sidebar on desktop (a compact bar with a drawer on small screens).
 
 export function Mark({ size = 28 }) {
-  // A stack of pages: "offer stack".
+  // A sun rising over a stack of resume lines.
+  const id = useId()
   return (
-    <span className="sunrise mark-shadow grid shrink-0 place-items-center rounded-[8px]" style={{ width: size, height: size }} aria-hidden>
-      <svg viewBox="0 0 24 24" width={size * 0.72} height={size * 0.72}>
-        <rect x="8.5" y="3" width="10.5" height="13" rx="2" fill="#fff" opacity=".45" />
-        <rect x="5" y="7" width="10.5" height="14" rx="2" fill="#fff" />
-        <rect x="7.4" y="11" width="5.8" height="1.6" rx=".8" className="fill-brand" />
-        <rect x="7.4" y="14.4" width="4" height="1.6" rx=".8" className="fill-brand" opacity=".55" />
+    <span className="sunrise mark-shadow grid shrink-0 place-items-center overflow-hidden" style={{ width: size, height: size, borderRadius: size * 0.28 }} aria-hidden>
+      <svg viewBox="0 0 32 32" width={size} height={size}>
+        <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fde68a" /><stop offset="1" stopColor="#fbbf24" /></linearGradient></defs>
+        <path d="M8 18a8 8 0 0 1 16 0z" fill={`url(#${CSS.escape(id)})`} />
+        <rect x="6" y="20.5" width="20" height="2.6" rx="1.3" fill="#fff" />
+        <rect x="9" y="24.6" width="14" height="2.6" rx="1.3" fill="#fff" opacity=".75" />
       </svg>
     </span>
   )

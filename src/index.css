@@ -48,7 +48,7 @@
   --color-canvas: #f5fafc; --color-paper: #fbfeff; --color-rule: #dbe9ef; --color-ink: #102a3a; --color-body: #36505f;
   --color-muted: #71889a; --color-field: #ebf5f9; --color-soft: #f0f8fb; --color-desk: #e2eef3; --color-brand: #0e7490;
   --color-brand-soft: #d9f1f7; --color-brand-hover: #c2e7f1; --color-brand-deep: #155e75; --color-cta-from: #102a3a; --color-cta-to: #102a3a;
-  --grad: #0e7490, #06b6d4 55%, #fcd34d; --glow-a: 252 211 77; --glow-b: 34 211 238;
+  --grad: #0e7490, #06b6d4 60%, #22d3ee; --glow-a: 252 211 77; --glow-b: 34 211 238;
 }
 
 html, body { background: var(--color-canvas); color: var(--color-body); font-size: 15px; }
