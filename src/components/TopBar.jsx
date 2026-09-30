@@ -14,9 +14,15 @@ import BackupsDialog from './BackupsDialog'
 // The app's frame: a left sidebar on desktop (a compact bar with a drawer on small screens).
 
 export function Mark({ size = 28 }) {
+  // A stack of pages: "offer stack".
   return (
-    <span className="sunrise grid shrink-0 place-items-center rounded-[8px] text-white shadow-[0_4px_12px_-4px_rgba(255,122,69,.6)]" style={{ width: size, height: size }}>
-      <span className="display leading-none" style={{ fontSize: size * 0.78, marginTop: -size * 0.04 }}>o</span>
+    <span className="sunrise mark-shadow grid shrink-0 place-items-center rounded-[8px]" style={{ width: size, height: size }} aria-hidden>
+      <svg viewBox="0 0 24 24" width={size * 0.72} height={size * 0.72}>
+        <rect x="8.5" y="3" width="10.5" height="13" rx="2" fill="#fff" opacity=".45" />
+        <rect x="5" y="7" width="10.5" height="14" rx="2" fill="#fff" />
+        <rect x="7.4" y="11" width="5.8" height="1.6" rx=".8" className="fill-brand" />
+        <rect x="7.4" y="14.4" width="4" height="1.6" rx=".8" className="fill-brand" opacity=".55" />
+      </svg>
     </span>
   )
 }

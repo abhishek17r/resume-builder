@@ -4,7 +4,7 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-serif: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* Sunrise: warm cream surfaces, deep plum ink, a coral accent and a little sunshine. */
+  /* Colour tokens: the default palette. Others below override them with <html data-theme="…">. */
   --color-canvas: #fff8f0;
   --color-paper: #fffdf9;
   --color-rule: #f0e2d2;
@@ -13,6 +13,7 @@
   --color-muted: #857a92;
   --color-field: #fbf0e3;
   --color-soft: #fff4e8;
+  --color-desk: #f7eadb;
   --color-brand: #e2552b;
   --color-brand-soft: #ffe8dc;
   --color-brand-hover: #ffd9c7;
@@ -23,18 +24,47 @@
   --color-cta-to: #2b1f3f;
 }
 
+/* Gradient (logo) and glow (hero) per palette. */
+:root { --grad: #ff7a45, #ff9f43 55%, #ffc53d; --glow-a: 255 197 61; --glow-b: 255 122 69; }
+
+/* Sunrise: warm cream, deep plum, coral. */
+[data-theme="coral"] { }
+/* Ocean: crisp white-blue, navy ink, bright blue. */
+[data-theme="ocean"] {
+  --color-canvas: #f6f9ff; --color-paper: #fbfdff; --color-rule: #dfe7f3; --color-ink: #14213d; --color-body: #3a4661;
+  --color-muted: #75809a; --color-field: #eef3fb; --color-soft: #f1f6fe; --color-desk: #e6edf8; --color-brand: #2563eb;
+  --color-brand-soft: #e3ecff; --color-brand-hover: #d2e0ff; --color-brand-deep: #1d4ed8; --color-cta-from: #14213d; --color-cta-to: #14213d;
+  --grad: #2563eb, #3b82f6 45%, #38bdf8; --glow-a: 56 189 248; --glow-b: 99 102 241;
+}
+/* Teal: fresh mint surfaces, deep green-black ink, teal. */
+[data-theme="teal"] {
+  --color-canvas: #f4fbf9; --color-paper: #fafefd; --color-rule: #d8ebe5; --color-ink: #12302b; --color-body: #37504a;
+  --color-muted: #718984; --color-field: #eaf6f2; --color-soft: #effaf6; --color-desk: #e1efea; --color-brand: #0d8277;
+  --color-brand-soft: #d9f3ec; --color-brand-hover: #c3ebe0; --color-brand-deep: #0a6b62; --color-cta-from: #12302b; --color-cta-to: #12302b;
+  --grad: #0d9488, #14b8a6 50%, #5eead4; --glow-a: 94 234 212; --glow-b: 250 204 21;
+}
+/* Lagoon: sky surfaces, deep sea ink, teal-blue, with a sunny glow. */
+[data-theme="lagoon"] {
+  --color-canvas: #f5fafc; --color-paper: #fbfeff; --color-rule: #dbe9ef; --color-ink: #102a3a; --color-body: #36505f;
+  --color-muted: #71889a; --color-field: #ebf5f9; --color-soft: #f0f8fb; --color-desk: #e2eef3; --color-brand: #0e7490;
+  --color-brand-soft: #d9f1f7; --color-brand-hover: #c2e7f1; --color-brand-deep: #155e75; --color-cta-from: #102a3a; --color-cta-to: #102a3a;
+  --grad: #0e7490, #06b6d4 55%, #fcd34d; --glow-a: 252 211 77; --glow-b: 34 211 238;
+}
+
 html, body { background: var(--color-canvas); color: var(--color-body); font-size: 15px; }
 body { -webkit-font-smoothing: antialiased; }
-::selection { background: #ffd9c7; }
+::selection { background: var(--color-brand-hover); }
 
-.sunrise { background: linear-gradient(135deg, #ff7a45 0%, #ff9f43 55%, #ffc53d 100%); }
+.sunrise { background: linear-gradient(135deg, var(--grad)); }
+.mark-shadow { box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--color-brand) 55%, transparent); }
+.brand-shadow { box-shadow: 0 12px 28px -14px color-mix(in srgb, var(--color-brand) 55%, transparent); }
 /* A soft morning glow behind hero areas. */
 .glow { background-repeat: no-repeat; background-size: 100% 900px; background-image:
-  radial-gradient(60% 55% at 85% 20%, rgb(255 197 61 / .28), transparent 70%),
-  radial-gradient(50% 50% at 10% 0%, rgb(255 122 69 / .14), transparent 70%); }
+  radial-gradient(60% 55% at 85% 20%, rgb(var(--glow-a) / .28), transparent 70%),
+  radial-gradient(50% 50% at 10% 0%, rgb(var(--glow-b) / .14), transparent 70%); }
 .card { background: #fff; border: 1px solid var(--color-rule); border-radius: 10px; }
 .cta { background: var(--color-ink); }
-.cta:hover { background: #3b2d52; }
+.cta:hover { background: color-mix(in srgb, var(--color-ink) 88%, white); }
 .field { @apply w-full rounded-md border border-rule bg-white px-3 py-2.5 text-[15px] text-ink outline-none ring-brand/30 transition focus:border-brand focus:ring-2; }
 .label { @apply mb-1.5 block text-[13px] font-semibold uppercase tracking-[0.06em] text-muted; }
 .display { font-family: var(--font-serif); font-weight: 500; font-variation-settings: "SOFT" 100, "opsz" 72; letter-spacing: -0.015em; }

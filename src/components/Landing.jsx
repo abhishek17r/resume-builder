@@ -33,8 +33,8 @@ export default function Landing({ onOpen, onImport, onJob }) {
           <p className="meta mb-5 inline-flex items-center gap-2 rounded-full border border-rule bg-paper px-3 py-1 uppercase tracking-[0.08em] text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" /> Local-first · open source
           </p>
-          <h1 className="display text-[52px] leading-[1.02] text-ink sm:text-[64px]">
-            One history.<br />A resume for <em className="text-brand">every</em> job.
+          <h1 className="text-[36px] font-bold leading-[1.1] tracking-[-0.025em] text-ink sm:text-[46px]">
+            One history.<br /><span className="sm:whitespace-nowrap">A resume for <span className="text-brand">every</span> job.</span>
           </h1>
           <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-body">
             {APP_TAGLINE} Keep every bullet you’ve ever written in one vault, build a version tailored to each job in under a minute, and see exactly how well it matches, all on your own machine.
@@ -68,7 +68,7 @@ export default function Landing({ onOpen, onImport, onJob }) {
         </div>
         <div className="overflow-hidden rounded-[10px] border border-rule bg-white shadow-[0_30px_60px_-30px_rgba(23,23,27,.35)]">
           <div className="flex items-center gap-2 border-b border-rule bg-paper px-4 py-2.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#f3dcc6]" /><span className="h-2.5 w-2.5 rounded-full bg-[#f3dcc6]" /><span className="h-2.5 w-2.5 rounded-full bg-[#f3dcc6]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-rule" /><span className="h-2.5 w-2.5 rounded-full bg-rule" /><span className="h-2.5 w-2.5 rounded-full bg-rule" />
             <span className="meta mx-auto rounded-sm bg-white px-3 py-0.5 text-muted ring-1 ring-rule">localhost:5190</span>
           </div>
           <img src="/demo/tailor-journey.gif" alt="Pasting a job description, building a tailored resume from the vault, reviewing the match score and switching templates" width="960" height="600" loading="lazy" className="block h-auto w-full" />
