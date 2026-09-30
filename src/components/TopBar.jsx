@@ -14,15 +14,15 @@ import BackupsDialog from './BackupsDialog'
 // The app's frame: a left sidebar on desktop (a compact bar with a drawer on small screens).
 
 export function Mark({ size = 28 }) {
-  // A sun rising over a stack of resume lines.
+  // A rising stack of cards; the top one, lit gold, is the offer.
   const id = useId()
   return (
     <span className="sunrise mark-shadow grid shrink-0 place-items-center overflow-hidden" style={{ width: size, height: size, borderRadius: size * 0.28 }} aria-hidden>
       <svg viewBox="0 0 32 32" width={size} height={size}>
         <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fde68a" /><stop offset="1" stopColor="#fbbf24" /></linearGradient></defs>
-        <path d="M8 18a8 8 0 0 1 16 0z" fill={`url(#${CSS.escape(id)})`} />
-        <rect x="6" y="20.5" width="20" height="2.6" rx="1.3" fill="#fff" />
-        <rect x="9" y="24.6" width="14" height="2.6" rx="1.3" fill="#fff" opacity=".75" />
+        <rect x="5" y="19.5" width="13" height="6.5" rx="2" fill="#fff" opacity=".55" />
+        <rect x="9.5" y="13" width="13" height="6.5" rx="2" fill="#fff" opacity=".8" />
+        <rect x="14" y="6.5" width="13" height="6.5" rx="2" fill={`url(#${CSS.escape(id)})`} />
       </svg>
     </span>
   )
