@@ -454,13 +454,11 @@ function Header({ resume, ctx, tone, inSidebar }) {
       )}
       <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
         {s.titlePlacement === 'inline' && p.jobTitle ? (
-          // Name and title on one line (sharing a baseline), wrapping only if the title doesn't fit.
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: center ? 'center' : 'flex-start', columnGap: '3mm', rowGap: '1mm' }}>
+          // Name and title on one line (sharing a baseline), separated by space only, so a title that wraps
+          // to the next line doesn't start with a divider.
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: center ? 'center' : 'flex-start', columnGap: '4mm', rowGap: '1mm' }}>
             <span style={{ fontFamily: family(s.nameFont || s.bodyFont), fontSize: 'var(--fs-name)', fontWeight: 700, lineHeight: 1.1, color: nameColor }}>{p.fullName}</span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '3mm', fontSize: 'var(--fs-title)', fontStyle: s.titleStyle === 'normal' ? 'normal' : 'italic', color: titleColor, lineHeight: 1.2 }}>
-              {p.fullName && <span aria-hidden style={{ opacity: 0.35, fontStyle: 'normal' }}>|</span>}
-              {p.jobTitle}
-            </span>
+            <span style={{ fontSize: 'var(--fs-title)', fontStyle: s.titleStyle === 'normal' ? 'normal' : 'italic', color: titleColor, lineHeight: 1.2 }}>{p.jobTitle}</span>
           </div>
         ) : (
           <>
