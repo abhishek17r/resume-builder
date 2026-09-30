@@ -2,7 +2,6 @@
 
 @theme {
   --font-sans: "Plus Jakarta Sans", -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-serif: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Colour tokens: the default palette. Others below override them with <html data-theme="…">. */
   --color-canvas: #fff8f0;
@@ -67,8 +66,9 @@ body { -webkit-font-smoothing: antialiased; }
 .cta:hover { background: color-mix(in srgb, var(--color-ink) 88%, white); }
 .field { @apply w-full rounded-md border border-rule bg-white px-3 py-2.5 text-[15px] text-ink outline-none ring-brand/30 transition focus:border-brand focus:ring-2; }
 .label { @apply mb-1.5 block text-[13px] font-semibold uppercase tracking-[0.06em] text-muted; }
-.display { font-family: var(--font-serif); font-weight: 500; font-variation-settings: "SOFT" 100, "opsz" 72; letter-spacing: -0.015em; }
-.display em { font-style: italic; font-variation-settings: "SOFT" 100, "opsz" 72; }
+/* Headings and the wordmark: the interface sans, bold and tight. */
+.display { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.025em; }
+.display em { font-style: normal; color: var(--color-brand); }
 .meta { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 /* Editor and preview panes scroll on their own; keep their scrollbars quiet. */
