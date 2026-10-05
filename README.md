@@ -69,18 +69,6 @@ npm run dev        # starts the app on :5190 and the AI server on :8787
 **Import**
 - PDF, Word, text/Markdown, JSON backups, and LinkedIn (profile PDF or data export). Text, layout and design are read separately; choose a template or keep the original look.
 
-## Chat with Claude (MCP)
-
-Prefer to work in a conversation? Offerstack includes an MCP server, so Claude (Desktop, Code or any MCP client) can read your resumes and vault and push bullets back while Offerstack is open. Changes appear live in the app and can be undone.
-
-```bash
-claude mcp add offerstack -- node /path/to/offerstack/api/mcp/server.js
-```
-
-The exact command for your machine, and the Claude Desktop config, are on the **Integrations** page. Then ask things like *"Read my vault and help me write three stronger bullets about my pricing work. Add the ones I approve."*
-
-Claude can list and read resumes, search the vault, add bullets to the vault or to a resume entry, rewrite a bullet, set a summary and open a resume in the app. It's told to use only your own facts and to leave `[X]` placeholders for numbers you haven't given.
-
 ## How the AI works (and where it's allowed to fail)
 
 Every AI feature is a single structured call with a JSON schema: no chat, no agents. The server checks what comes back before the app sees it.
@@ -136,6 +124,7 @@ scripts/          dev launcher, demo GIF recorder
 - **Evals:** a public suite for honesty, edit fidelity, bullet selection, score stability and import accuracy, run on every prompt or model change.
 - **Token economics:** cost and latency per feature, shown in the app.
 - **Observability:** a local trace of every AI call, its guards and timing.
+- **MCP server:** edit and style your resume from Claude, live in the preview.
 - **Application tracker:** from job description to offer.
 
 ## Contributing
