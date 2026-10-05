@@ -52,6 +52,7 @@ export default function IntegrationsPage() {
             {[
               ...data.integrations.filter(i => i.soon).map(i => [i.label, i.blurb]),
               ['Claude (MCP)', 'Edit and style your resumes from a conversation with Claude, live in the preview.'],
+              ['Agents', 'Hand off the busywork: find roles that fit your vault, tailor a resume for each, and keep track of where you applied.'],
               ['Job boards', 'Save job descriptions from LinkedIn and other boards in one click.'],
             ].map(([name, text]) => (
               <div key={name} className="flex items-center gap-3 px-5 py-4">
