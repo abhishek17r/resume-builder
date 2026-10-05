@@ -47,11 +47,13 @@ export default function IntegrationsPage() {
             <span>Keys are saved by your local AI server in <code className="meta">api/.data/integrations.json</code> on this computer (readable only by your user account). They are never stored in the browser, shown again, or sent anywhere except to the provider you choose.</span>
           </p>
 
+          <h2 className="display mb-3 mt-10 text-[26px] text-ink">Chat with Claude</h2>
+          <ClaudeMcp />
+
           <h2 className="display mb-3 mt-10 text-[26px] text-ink">Coming soon</h2>
           <div className="card divide-y divide-rule text-[14px]">
             {[
               ...data.integrations.filter(i => i.soon).map(i => [i.label, i.blurb]),
-              ['Claude (MCP)', 'Edit and style your resumes from a conversation with Claude, live in the preview.'],
               ['Job boards', 'Save job descriptions from LinkedIn and other boards in one click.'],
             ].map(([name, text]) => (
               <div key={name} className="flex items-center gap-3 px-5 py-4">
@@ -64,6 +66,60 @@ export default function IntegrationsPage() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// Claude through MCP: chat in Claude (Desktop or Code) and push bullets into Offerstack while it's open.
+function ClaudeMcp() {
+  const [info, setInfo] = useState(null)
+  const [copied, setCopied] = useState(null)
+  useEffect(() => {
+    const load = () => request('GET', '/api/bridge/info').then(setInfo, () => setInfo(false))
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [])
+  if (!info) return null
+  const code = `claude mcp add offerstack -- node "${info.mcpServerPath}"`
+  const desktop = JSON.stringify({ mcpServers: { offerstack: { command: info.node, args: [info.mcpServerPath] } } }, null, 2)
+  const copy = (what, text) => navigator.clipboard.writeText(text).then(() => { setCopied(what); setTimeout(() => setCopied(null), 1500) })
+  const Snippet = ({ id, text }) => (
+    <div className="flex items-start gap-2">
+      <pre className="meta min-w-0 flex-1 overflow-x-auto whitespace-pre rounded-md bg-ink px-3 py-2.5 text-[12.5px] leading-relaxed text-white">{text}</pre>
+      <button onClick={() => copy(id, text)} className="shrink-0 rounded-md border border-rule bg-white px-3 py-2 text-[13px] font-medium text-ink hover:border-ink/40">{copied === id ? 'Copied' : 'Copy'}</button>
+    </div>
+  )
+  return (
+    <div className="card space-y-4 p-5 text-[14px]">
+      <div className="flex items-start gap-3">
+        <span className={clsx('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', info.appConnected ? 'bg-emerald-600' : 'bg-amber-500')} />
+        <div>
+          <p className="font-medium text-ink">{info.appConnected ? 'Ready: Claude can read and edit your resumes while Offerstack is open' : 'Open Offerstack in a browser tab so Claude can reach it'}</p>
+          <p className="mt-1 text-muted">Ask Claude to read your resumes and vault, sharpen bullets with you, and push the ones you like straight into Offerstack. Changes show up here live, and you can undo them.</p>
+        </div>
+      </div>
+      <div>
+        <p className="label">Claude Code</p>
+        <Snippet id="code" text={code} />
+      </div>
+      <div>
+        <p className="label">Claude Desktop</p>
+        <p className="mb-2 text-[13px] text-muted">Settings → Developer → Edit Config, add this to <code className="meta">claude_desktop_config.json</code>, then restart Claude.</p>
+        <Snippet id="desktop" text={desktop} />
+      </div>
+      <div className="rounded-md bg-soft px-4 py-3 text-[13px] text-body">
+        <p className="font-medium text-ink">Try asking</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+          <li>“Read my vault and help me write three stronger bullets about my pricing work at Acme. Add the ones I approve.”</li>
+          <li>“Here's a JD. Which bullets from my vault fit it best? Put the top four into my PM resume.”</li>
+          <li>“Rewrite the summary of my open resume for a platform PM role.”</li>
+        </ul>
+      </div>
+      <p className="flex items-start gap-2 text-[13px] text-muted">
+        <ShieldCheck size={15} className="mt-0.5 shrink-0 text-brand" />
+        <span>Only Claude on this computer can connect. What it reads from Offerstack becomes part of your Claude conversation, like anything else you share there.</span>
+      </p>
     </div>
   )
 }

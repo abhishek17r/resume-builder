@@ -226,6 +226,20 @@ export const useStore = create(
           mutate(r => { ok = applyEditTo(r, edit) })
           return ok
         },
+        // Edit any resume by id (used by Claude through the bridge). The open resume goes through `mutate`, so the
+        // change can be undone; others are edited directly. Returns whatever fn returns.
+        editResume: (resumeId, fn) => {
+          let out
+          if (resumeId === get().currentId) { mutate(r => { out = fn(r) }); return out }
+          set(state => ({ resumes: state.resumes.map(r => {
+            if (r.id !== resumeId) return r
+            const draft = structuredClone(r)
+            out = fn(draft)
+            draft.updatedAt = Date.now()
+            return draft
+          }) }))
+          return out
+        },
         // Copy a resume, apply edits to the copy, label it, and open it.
         createTailoredCopy: ({ sourceId, edits, name, label }) => {
           const state = get()
@@ -262,6 +276,26 @@ export const useStore = create(
         addVaultBullet: (itemId, text, role = '') => set(state => ({ vault: { ...state.vault, items: state.vault.items.map(it => it.id !== itemId ? it : {
           ...it, bullets: [...it.bullets, { id: uid(), text, html: '', role, tags: ruleTags(text, vaultTags(state.vault)), tagSource: 'rules', origins: [fingerprint(text)], sources: [], manual: true, createdAt: Date.now(), updatedAt: Date.now() }],
         }) } })),
+        // Several bullets at once (from Claude). Skips any already in the item; returns { added, skipped }.
+        addVaultBullets: (itemId, bullets, tagIds = []) => {
+          const result = { added: [], skipped: [] }
+          set(state => ({ vault: { ...state.vault, items: state.vault.items.map(it => {
+            if (it.id !== itemId) return it
+            const seen = new Set(it.bullets.flatMap(b => [fingerprint(b.text), ...b.origins]))
+            const fresh = []
+            for (const { text, role = '' } of bullets) {
+              const fp = fingerprint(text)
+              if (!fp || seen.has(fp)) { result.skipped.push(text); continue }
+              seen.add(fp)
+              const id = uid()
+              const tags = [...new Set([...ruleTags(text, vaultTags(state.vault)), ...tagIds])]
+              fresh.push({ id, text, html: '', role, tags, tagSource: tagIds.length ? 'user' : 'rules', origins: [fp], sources: [], manual: true, createdAt: Date.now(), updatedAt: Date.now() })
+              result.added.push(id)
+            }
+            return fresh.length ? { ...it, bullets: [...it.bullets, ...fresh] } : it
+          }) } }))
+          return result
+        },
         deleteVaultBullet: (itemId, bulletId) => set(state => {
           const item = state.vault.items.find(i => i.id === itemId)
           const bullet = item?.bullets.find(b => b.id === bulletId)

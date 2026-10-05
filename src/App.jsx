@@ -14,6 +14,7 @@ import { useStore, useResume, useHydrated } from './lib/store'
 import { onSaveResult } from './lib/storage'
 import { PAGE_SIZES } from './components/ResumeDocument'
 import { downloadResume } from './lib/download'
+import { startBridge } from './lib/bridge'
 
 export default function App() {
   // First visit opens on the landing page; after that, on the resumes.
@@ -87,6 +88,16 @@ export default function App() {
 
   // Saves Name_Resume_ddmmyyyy(n).pdf straight to the download folder (print dialog only as a fallback).
   const [toast, setToast] = useState(null)
+
+  // Claude (through the MCP server) can read and edit resumes while the app is open; say what it changed.
+  useEffect(() => {
+    if (!hydrated) return
+    startBridge()
+    let t
+    const onClaude = e => { clearTimeout(t); setToast({ text: e.detail.message }); t = setTimeout(() => setToast(null), 5000) }
+    window.addEventListener('offerstack:claude', onClaude)
+    return () => { window.removeEventListener('offerstack:claude', onClaude); clearTimeout(t) }
+  }, [hydrated])
   const download = async () => {
     if (toast?.busy) return
     setToast({ busy: true, text: 'Preparing your PDF…' })
