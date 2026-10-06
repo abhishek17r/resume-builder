@@ -43,7 +43,7 @@ export default function Landing({ onOpen, onImport }) {
         <LocalSetup />
 
         <footer className="mt-14 border-t border-rule pt-5 text-[13px] text-muted">
-          A weekend project by Abhishek. Code on <a href={REPOS.app} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">GitHub</a>.
+          Code on <a href={REPOS.app} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">GitHub</a>.
         </footer>
       </main>
     </div>
