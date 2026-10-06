@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dirname, '..')
-const API_DIRS = ['../resume-tool-api', '../api', '../resume-builder-api'].map(d => resolve(ROOT, d))
+const API_DIRS = ['../refit-api', '../api', '../resume-builder-api'].map(d => resolve(ROOT, d))
 const API_PORT = Number(process.env.API_PORT || 8787)
 
 const children = []

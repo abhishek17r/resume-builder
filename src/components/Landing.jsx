@@ -54,7 +54,7 @@ const STEPS = [
   ['Install and start it', INSTALL_CMD],
   ['Open it', 'http://localhost:5190'],
   ['Turn on the AI bits', 'Integrations → paste an OpenAI, Anthropic or Gemini key'],
-  ['Next time', 'cd resume-tool/app && npm run dev'],
+  ['Next time', 'cd refit/app && npm run dev'],
 ]
 
 function LocalSetup() {

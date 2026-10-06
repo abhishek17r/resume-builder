@@ -1,4 +1,4 @@
-# resume-tool
+# refit
 
 A small app I built over a weekend to stop rewriting my resume for every job. It keeps every bullet I've written in one place (the vault), and when I paste a job description it puts together a resume for that job from them, then shows how well it matches. It runs on your laptop and your resumes stay in your browser.
 
@@ -36,7 +36,7 @@ Test the connection, pick a model, and switch providers any time without restart
 <summary>Manual install</summary>
 
 ```bash
-mkdir resume-tool && cd resume-tool
+mkdir refit && cd refit
 git clone https://github.com/abhishek17r/resume-builder.git app
 git clone https://github.com/abhishek17r/resume-builder-api.git api
 (cd api && npm install)
@@ -44,7 +44,7 @@ cd app && npm install
 npm run dev        # starts the app on :5190 and the AI server on :8787
 ```
 
-`npm run dev` finds the AI server next to the app (`../api`, `../resume-tool-api` or `../resume-builder-api`) and starts it too; `npm run dev:app` starts the app alone. If the server runs elsewhere, set `VITE_API_URL`.
+`npm run dev` finds the AI server next to the app (`../api`, `../refit-api` or `../resume-builder-api`) and starts it too; `npm run dev:app` starts the app alone. If the server runs elsewhere, set `VITE_API_URL`.
 </details>
 
 ## Features
@@ -133,4 +133,4 @@ Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Co
 
 ## Licence
 
-[AGPL-3.0](LICENSE) © Abhishek Ranjan. You can use, modify and self-host resume-tool freely; if you offer a modified version as a network service, you must share its source under the same licence.
+[AGPL-3.0](LICENSE) © Abhishek Ranjan. You can use, modify and self-host refit freely; if you offer a modified version as a network service, you must share its source under the same licence.

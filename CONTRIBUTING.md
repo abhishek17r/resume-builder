@@ -1,6 +1,6 @@
-# Contributing to resume-tool
+# Contributing to refit
 
-Thanks for helping. resume-tool is two repositories: this app (React + Vite) and the [AI server](https://github.com/abhishek17r/resume-builder-api) (Node + Express). Most changes touch only one.
+Thanks for helping. refit is two repositories: this app (React + Vite) and the [AI server](https://github.com/abhishek17r/resume-builder-api) (Node + Express). Most changes touch only one.
 
 ## Before you start
 
@@ -11,7 +11,7 @@ Thanks for helping. resume-tool is two repositories: this app (React + Vite) and
 ## Develop
 
 ```bash
-# both repositories side by side, e.g. resume-tool/app and resume-tool/api
+# both repositories side by side, e.g. refit/app and refit/api
 cd app && npm install && npm run dev   # starts the app and, if found next to it, the AI server
 ```
 

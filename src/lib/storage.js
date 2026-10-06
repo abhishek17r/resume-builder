@@ -18,7 +18,7 @@ const BACKUP_SUFFIX = ':backups'
 const BACKUP_EVERY = 10 * 60_000
 const BACKUP_MAX = 20
 
-const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('resume-tool-store') : null
+const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('refit-store') : null
 const TAB = Math.random().toString(36).slice(2)
 const loaded = new Set() // names read at least once in this tab
 const lastSaved = new Map() // name → the stored string this tab last read or wrote
