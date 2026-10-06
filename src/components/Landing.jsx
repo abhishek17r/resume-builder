@@ -8,17 +8,17 @@ import { APP_NAME, REPOS, INSTALL_CMD } from '../config/app'
 export default function Landing({ onOpen, onImport }) {
   return (
     <div className="min-h-screen bg-canvas">
-      <main className="mx-auto max-w-3xl px-6 pb-16 pt-10">
+      <main className="mx-auto max-w-4xl px-6 pb-16 pt-10">
         <header className="flex items-center gap-2.5">
           <Mark size={24} />
-          <span className="display text-[20px] text-ink">{APP_NAME}</span>
+          <span className="display text-[22px] text-ink">{APP_NAME}</span>
           <a href={REPOS.app} target="_blank" rel="noreferrer" className="ml-auto text-[14px] text-muted hover:text-ink">GitHub</a>
         </header>
 
-        <p className="mt-10 text-[18px] leading-relaxed text-ink">
+        <p className="mt-12 text-[21px] leading-relaxed text-ink">
           A small app I built to stop rewriting my resume for every job. It keeps every bullet I’ve written in one place, and when I paste a job description it puts together a resume for that job from them.
         </p>
-        <p className="mt-3 leading-relaxed text-body">It’s free, open source, and runs on your laptop. Your resumes stay in your browser.</p>
+        <p className="mt-3 text-[16px] leading-relaxed text-body">It’s free, open source, and runs on your laptop. Your resumes stay in your browser.</p>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button onClick={onOpen} className="flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-[15px] font-medium text-white hover:bg-brand-deep">
@@ -31,16 +31,37 @@ export default function Landing({ onOpen, onImport }) {
 
         <img src="/demo/tailor-journey.gif" alt="Pasting a job description, building a tailored resume from the vault, checking the match and picking a design" width="960" height="600" loading="lazy" className="mt-10 block h-auto w-full rounded-md border border-rule" />
 
-        <h2 className="display mt-12 text-[22px] text-ink">What it does</h2>
-        <ul className="mt-3 list-disc space-y-2 pl-5 leading-relaxed text-body">
-          <li>Keeps all your bullets from all your resumes in one vault, without duplicates. You can tag them too.</li>
-          <li>Paste a job description and it builds a resume from your own bullets, picking the relevant ones and rewording them a little for the job. It won’t make things up.</li>
-          <li>Shows how well a resume matches the job, and which requirements are missing.</li>
-          <li>Points out weak bullets, like ones with no numbers, and suggests fixes.</li>
-          <li>Has a handful of templates, and downloads a PDF in one click.</li>
-        </ul>
+        <h2 className="display mt-14 text-[24px] text-ink">What it does</h2>
+        <div className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+          {FEATURES.map(([title, text]) => (
+            <div key={title}>
+              <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
+              <p className="mt-1 leading-relaxed text-body">{text}</p>
+            </div>
+          ))}
+        </div>
+
+        <h2 className="display mt-14 text-[24px] text-ink">A look around</h2>
+        <div className="mt-4 grid gap-6 sm:grid-cols-2">
+          {SCREENS.map(([file, caption]) => (
+            <figure key={file}>
+              <img src={`/screens/${file}`} alt={caption} loading="lazy" width="1920" height="1200" className="block h-auto w-full rounded-md border border-rule" />
+              <figcaption className="mt-2 text-[14px] text-muted">{caption}</figcaption>
+            </figure>
+          ))}
+        </div>
 
         <LocalSetup />
+
+        <h2 className="display mt-14 text-[24px] text-ink">Questions</h2>
+        <dl className="mt-4 space-y-5">
+          {QUESTIONS.map(([q, a]) => (
+            <div key={q}>
+              <dt className="font-semibold text-ink">{q}</dt>
+              <dd className="mt-1 leading-relaxed text-body">{a}</dd>
+            </div>
+          ))}
+        </dl>
 
         <footer className="mt-14 border-t border-rule pt-5 text-[13px] text-muted">
           Code on <a href={REPOS.app} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">GitHub</a>.
@@ -49,6 +70,29 @@ export default function Landing({ onOpen, onImport }) {
     </div>
   )
 }
+
+const FEATURES = [
+  ['One vault for all your bullets', 'Every bullet from every resume you make or import lands in one place, without duplicates. If you change a number in one version, that version is kept too. You can tag bullets, like leadership or cross-functional.'],
+  ['Tailor to a job', 'Paste a job description and it builds a resume from your own bullets: the relevant roles and points, lightly reworded for the job, plus a title, summary and skills that fit. It isn’t allowed to make things up.'],
+  ['A match score you can check', 'It shows which requirements your resume covers, which it only partly covers, and which are missing. The score is calculated from that, so the same resume and job always get the same score.'],
+  ['Checks for weak bullets', 'Flags bullets with no numbers, weak verbs, first person or too many words, with quick fixes, and AI rewrites that keep your facts.'],
+  ['Templates and PDFs', 'A handful of templates with fonts, colours and spacing you can change. Fit to one page, and a PDF in one click that looks exactly like the preview.'],
+  ['Import what you have', 'Bring in a PDF or Word resume, or your LinkedIn profile, and it fills the vault from it.'],
+]
+
+const SCREENS = [
+  ['vault.jpg', 'The vault: every bullet, scored and tagged'],
+  ['tailor.jpg', 'Paste a job description to build a resume for it'],
+  ['checks.jpg', 'Quality checks, with the issues to fix'],
+  ['designs.jpg', 'Templates, fonts and spacing'],
+]
+
+const QUESTIONS = [
+  ['Is it free?', 'Yes. It’s open source (AGPL). The only cost is the AI provider you choose, and only when you use the AI features.'],
+  ['Where does my data go?', 'Your resumes stay in your browser’s storage on your laptop. When you use an AI feature, the text it needs goes to the AI provider you picked, with your own key. There’s no account and no server of mine involved.'],
+  ['Do I need an AI key?', 'No. Editing, designs, the vault, quality checks and PDFs all work without one. You need a key (OpenAI, Anthropic or Gemini) only for tailoring to a job and AI rewrites.'],
+  ['Will it make things up?', 'It’s built not to. It can only pick and lightly reword your own bullets, and every AI edit is checked: numbers must match, and most of your words must stay. If an edit fails, you get your original back.'],
+]
 
 const STEPS = [
   ['Install and start it', INSTALL_CMD],
