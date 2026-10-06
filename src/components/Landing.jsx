@@ -16,9 +16,9 @@ export default function Landing({ onOpen, onImport }) {
         </header>
 
         <p className="mt-12 text-[21px] leading-relaxed text-ink">
-          A small app for tailoring your resume to every job you apply for. Keep every bullet you’ve written in one place, paste a job description, and it puts together a resume for that job from them.
+          A small app for tailoring a resume to each job application. It keeps every bullet in one place and, given a job description, puts together a resume for that job from them.
         </p>
-        <p className="mt-3 text-[16px] leading-relaxed text-body">It’s free, open source, and runs on your laptop. Your resumes stay in your browser.</p>
+        <p className="mt-3 text-[16px] leading-relaxed text-body">Free, open source, and runs locally. Resumes stay in the browser.</p>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button onClick={onOpen} className="flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-[15px] font-medium text-white hover:bg-brand-deep">
