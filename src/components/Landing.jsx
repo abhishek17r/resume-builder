@@ -41,6 +41,16 @@ export default function Landing({ onOpen, onImport }) {
           ))}
         </div>
 
+        <h2 className="display mt-14 text-[24px] text-ink">Why it works this way</h2>
+        <div className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+          {WHY.map(([title, text]) => (
+            <div key={title}>
+              <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
+              <p className="mt-1 leading-relaxed text-body">{text}</p>
+            </div>
+          ))}
+        </div>
+
         <h2 className="display mt-14 text-[24px] text-ink">A look around</h2>
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
           {SCREENS.map(([file, caption]) => (
@@ -78,6 +88,15 @@ const FEATURES = [
   ['Checks for weak bullets', 'Flags bullets with no numbers, weak verbs, first person or too many words, with quick fixes, and AI rewrites that keep your facts.'],
   ['Templates and PDFs', 'A handful of templates with fonts, colours and spacing you can change. Fit to one page, and a PDF in one click that looks exactly like the preview.'],
   ['Import what you have', 'Bring in a PDF or Word resume, or your LinkedIn profile, and it fills the vault from it.'],
+]
+
+const WHY = [
+  ['Bring your own AI', 'Connect OpenAI, Anthropic or Gemini with your own key on the Integrations page, and pay them directly for what you use. AI is set up as an integration, so more providers and tools can plug in later without changing the app.'],
+  ['Your resume stays with you', 'Everything is saved in your browser, on your laptop. No account, and nothing stored on anyone else’s server.'],
+  ['One tool instead of three', 'No separate subscriptions for writing, designing and checking ATS scores, and no copying your resume between them.'],
+  ['No chat, on purpose', 'There’s nothing to prompt. The AI works from the bullets you’ve already written and you accept or skip its suggestions, so it doesn’t make things up.'],
+  ['No ChatGPT-to-editor shuffle', 'No polishing bullets in ChatGPT and then fixing the layout in another tool. Tailoring, rewriting and formatting happen in one place, which saves the hours I used to spend prompting.'],
+  ['Designs that look like a resume', 'Proper resume templates you can tweak, instead of AI-generated layouts that don’t look like a CV.'],
 ]
 
 const SCREENS = [
