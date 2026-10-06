@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FileText, Paintbrush, Gauge, Archive, Download, MoreHorizontal, ChevronDown, Trash2, Pencil, Plus, Upload, FileJson,
@@ -14,15 +14,13 @@ import BackupsDialog from './BackupsDialog'
 // The app's frame: a left sidebar on desktop (a compact bar with a drawer on small screens).
 
 export function Mark({ size = 28 }) {
-  // A rising stack of cards; the top one, lit gold, is the offer.
-  const id = useId()
+  // A plain square with a few lines: a page of bullets.
   return (
-    <span className="sunrise mark-shadow grid shrink-0 place-items-center overflow-hidden" style={{ width: size, height: size, borderRadius: size * 0.28 }} aria-hidden>
-      <svg viewBox="0 0 32 32" width={size} height={size}>
-        <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fde68a" /><stop offset="1" stopColor="#fbbf24" /></linearGradient></defs>
-        <rect x="5" y="19.5" width="13" height="6.5" rx="2" fill="#fff" opacity=".55" />
-        <rect x="9.5" y="13" width="13" height="6.5" rx="2" fill="#fff" opacity=".8" />
-        <rect x="14" y="6.5" width="13" height="6.5" rx="2" fill={`url(#${CSS.escape(id)})`} />
+    <span className="grid shrink-0 place-items-center bg-brand" style={{ width: size, height: size, borderRadius: size * 0.22 }} aria-hidden>
+      <svg viewBox="0 0 32 32" width={size} height={size} fill="#fff">
+        <rect x="8" y="9" width="16" height="3" rx="1.5" />
+        <rect x="8" y="14.5" width="16" height="3" rx="1.5" opacity=".75" />
+        <rect x="8" y="20" width="10" height="3" rx="1.5" opacity=".5" />
       </svg>
     </span>
   )

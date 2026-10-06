@@ -1,6 +1,6 @@
 // Product name and copy in one place, so renaming the app is a one-line change.
-export const APP_NAME = 'Offerstack'
-export const APP_TAGLINE = 'The open-source, local-first stack for landing the offer.'
+export const APP_NAME = 'resume-tool'
+export const APP_TAGLINE = 'A small app for tailoring your resume to each job.'
 export const REPOS = {
   app: 'https://github.com/abhishek17r/resume-builder',
   api: 'https://github.com/abhishek17r/resume-builder-api',

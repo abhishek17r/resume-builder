@@ -1,6 +1,6 @@
-# Offerstack
+# resume-tool
 
-**One history. A resume for every job.** Offerstack is an open-source, local-first workbench for job seekers: keep everything you've done in one vault, build a resume tailored to each job in under a minute, and see exactly how well it matches. It runs on your machine; your resumes never leave your browser.
+A small app I built over a weekend to stop rewriting my resume for every job. It keeps every bullet I've written in one place (the vault), and when I paste a job description it puts together a resume for that job from them, then shows how well it matches. It runs on your laptop and your resumes stay in your browser.
 
 ![Pasting a job description, building a tailored resume from the vault, checking the match and picking a design](public/demo/tailor-journey.gif)
 
@@ -8,12 +8,12 @@
 
 ## Why
 
-Tailoring a resume for every application is the advice everyone gives and nobody has time for. Tools that do it with AI tend to make things up. Offerstack is built on four rules:
+Tailoring a resume for every application is the advice everyone gives and nobody has time for, and the AI tools for it tend to make things up. So a few rules I stuck to:
 
-1. **Your history is the source of truth.** Every bullet you've written, across every version, lives in one deduplicated **vault**. Tailored resumes are assembled from it, never invented.
-2. **AI suggests; it doesn't invent.** Rewrites keep your facts and numbers, and server-side guards reject edits that don't. Missing metrics become `[X]` placeholders for you to fill.
-3. **Scores you can check.** The job match isn't a number an LLM made up: it's computed from requirement coverage, keywords and title fit, and shown piece by piece.
-4. **Local-first, bring your own AI.** No account, no cloud database. Resumes live in your browser; a small local server holds your key and talks to the provider you chose (OpenAI, Anthropic or Gemini), only when you ask.
+1. **Your history is the source.** Every bullet you've written, across every version, lives in one vault, without duplicates. Tailored resumes are put together from it, never invented.
+2. **AI suggests, it doesn't invent.** Rewrites keep your facts and numbers, and the server rejects edits that don't. Missing metrics become `[X]` placeholders for you to fill.
+3. **A score you can check.** The job match is calculated from requirements covered, keywords and title fit, and shown piece by piece, not a number an LLM made up.
+4. **Runs locally, bring your own AI.** No account, no cloud database. A small local server holds your key and talks to OpenAI, Anthropic or Gemini only when you ask.
 
 ## Quickstart
 
@@ -36,7 +36,7 @@ Test the connection, pick a model, and switch providers any time without restart
 <summary>Manual install</summary>
 
 ```bash
-mkdir offerstack && cd offerstack
+mkdir resume-tool && cd resume-tool
 git clone https://github.com/abhishek17r/resume-builder.git app
 git clone https://github.com/abhishek17r/resume-builder-api.git api
 (cd api && npm install)
@@ -44,7 +44,7 @@ cd app && npm install
 npm run dev        # starts the app on :5190 and the AI server on :8787
 ```
 
-`npm run dev` finds the AI server next to the app (`../api`, `../offerstack-api` or `../resume-builder-api`) and starts it too; `npm run dev:app` starts the app alone. If the server runs elsewhere, set `VITE_API_URL`.
+`npm run dev` finds the AI server next to the app (`../api`, `../resume-tool-api` or `../resume-builder-api`) and starts it too; `npm run dev:app` starts the app alone. If the server runs elsewhere, set `VITE_API_URL`.
 </details>
 
 ## Features
@@ -133,4 +133,4 @@ Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Co
 
 ## Licence
 
-[AGPL-3.0](LICENSE) © Abhishek Ranjan. You can use, modify and self-host Offerstack freely; if you offer a modified version as a network service, you must share its source under the same licence.
+[AGPL-3.0](LICENSE) © Abhishek Ranjan. You can use, modify and self-host resume-tool freely; if you offer a modified version as a network service, you must share its source under the same licence.

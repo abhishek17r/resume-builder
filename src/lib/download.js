@@ -70,7 +70,7 @@ export async function downloadResume({ fullName, name, page }) {
     }
     reason = (await res.json().catch(() => null))?.error?.message ?? `PDF failed (${res.status})`
   } catch {
-    reason = 'The Offerstack server isn’t running'
+    reason = 'The local server isn’t running'
   }
   printDialog(page, title)
   return { ok: false, fallback: 'print', reason }

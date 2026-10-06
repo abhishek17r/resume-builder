@@ -11,7 +11,7 @@ export default function AiNotice({ what = 'use AI features', className = '' }) {
       <AlertTriangle size={16} className="shrink-0 text-amber-600" />
       <p className="min-w-0 flex-1">
         {offline
-          ? <>The Offerstack AI server isn’t running, so you can’t {what}. Start it with <code className="meta rounded bg-white/70 px-1">npm run dev</code> in the app folder.</>
+          ? <>The local AI server isn’t running, so you can’t {what}. Start it with <code className="meta rounded bg-white/70 px-1">npm run dev</code> in the app folder.</>
           : <>AI isn’t connected, so you can’t {what}. Connect OpenAI, Anthropic or Gemini with your own API key.</>}
       </p>
       {!offline && (

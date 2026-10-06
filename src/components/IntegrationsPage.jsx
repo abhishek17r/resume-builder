@@ -5,7 +5,7 @@ import { request } from '../lib/api'
 import { refreshServerStatus } from '../lib/useServerStatus'
 import { PageHeader, Button } from './Overview'
 
-// Bring your own AI: every AI feature in Offerstack goes through the provider connected here (OpenAI,
+// Bring your own AI: every AI feature goes through the provider connected here (OpenAI,
 // Anthropic or Gemini, with your own API key). Keys go to the local AI server on this computer and are
 // never stored in the browser or shown again. More providers are listed as coming soon.
 export default function IntegrationsPage() {
@@ -22,13 +22,13 @@ export default function IntegrationsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 pb-28">
-      <PageHeader title="Integrations" sub="Bring your own AI. Every AI feature in Offerstack uses the provider you connect here." />
+      <PageHeader title="Integrations" sub="Bring your own AI. Every AI feature uses the provider you connect here." />
 
       {data.offline ? (
         <div className="card flex gap-3 p-5 text-[14px]">
           <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-600" />
           <div>
-            <p className="font-medium text-ink">The Offerstack AI server isn’t running</p>
+            <p className="font-medium text-ink">The local AI server isn’t running</p>
             <p className="mt-1 text-muted">Integrations are saved by the local AI server. Start it with <code className="meta rounded bg-field px-1.5 py-0.5 text-ink">npm run dev</code> in the app folder, then reload this page.</p>
           </div>
         </div>

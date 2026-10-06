@@ -1,5 +1,5 @@
 {
-  "name": "offerstack",
+  "name": "resume-tool",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -35,7 +35,7 @@
     "vite": "^8.3.0"
   },
   "license": "AGPL-3.0-only",
-  "description": "Offerstack: an open-source, local-first workbench for building, tailoring and scoring resumes.",
+  "description": "A small open-source app for tailoring your resume to each job. Runs on your laptop.",
   "repository": {
     "type": "git",
     "url": "https://github.com/abhishek17r/resume-builder.git"
