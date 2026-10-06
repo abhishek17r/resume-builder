@@ -16,7 +16,7 @@ export default function Landing({ onOpen, onImport }) {
         </header>
 
         <p className="mt-12 text-[21px] leading-relaxed text-ink">
-          A small app I built to stop rewriting my resume for every job. It keeps every bullet I’ve written in one place, and when I paste a job description it puts together a resume for that job from them.
+          A small app for tailoring your resume to every job you apply for. Keep every bullet you’ve written in one place, paste a job description, and it puts together a resume for that job from them.
         </p>
         <p className="mt-3 text-[16px] leading-relaxed text-body">It’s free, open source, and runs on your laptop. Your resumes stay in your browser.</p>
 
@@ -95,7 +95,7 @@ const WHY = [
   ['Your resume stays with you', 'Everything is saved in your browser, on your laptop. No account, and nothing stored on anyone else’s server.'],
   ['One tool instead of three', 'No separate subscriptions for writing, designing and checking ATS scores, and no copying your resume between them.'],
   ['No chat, on purpose', 'There’s nothing to prompt. The AI works from the bullets you’ve already written and you accept or skip its suggestions, so it doesn’t make things up.'],
-  ['No ChatGPT-to-editor shuffle', 'No polishing bullets in ChatGPT and then fixing the layout in another tool. Tailoring, rewriting and formatting happen in one place, which saves the hours I used to spend prompting.'],
+  ['No ChatGPT-to-editor shuffle', 'No polishing bullets in ChatGPT and then fixing the layout in another tool. Tailoring, rewriting and formatting happen in one place, which saves hours of prompting.'],
   ['Designs that look like a resume', 'Proper resume templates you can tweak, instead of AI-generated layouts that don’t look like a CV.'],
 ]
 
@@ -108,7 +108,7 @@ const SCREENS = [
 
 const QUESTIONS = [
   ['Is it free?', 'Yes. It’s open source (AGPL). The only cost is the AI provider you choose, and only when you use the AI features.'],
-  ['Where does my data go?', 'Your resumes stay in your browser’s storage on your laptop. When you use an AI feature, the text it needs goes to the AI provider you picked, with your own key. There’s no account and no server of mine involved.'],
+  ['Where does my data go?', 'Your resumes stay in your browser’s storage on your laptop. When you use an AI feature, the text it needs goes to the AI provider you picked, with your own key. There’s no account, and no one else’s server in between.'],
   ['Do I need an AI key?', 'No. Editing, designs, the vault, quality checks and PDFs all work without one. You need a key (OpenAI, Anthropic or Gemini) only for tailoring to a job and AI rewrites.'],
   ['Will it make things up?', 'It’s built not to. It can only pick and lightly reword your own bullets, and every AI edit is checked: numbers must match, and most of your words must stay. If an edit fails, you get your original back.'],
 ]
