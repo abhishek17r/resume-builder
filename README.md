@@ -2,6 +2,8 @@
 
 A small app I built over a weekend to stop rewriting my resume for every job. It keeps every bullet I've written in one place (the vault), and when I paste a job description it puts together a resume for that job from them, then shows how well it matches. It runs on your laptop and your resumes stay in your browser.
 
+refit is a personal, non-commercial open source project: free, with no ads, no paid plans and no data collection. It isn't affiliated with any company.
+
 ![Pasting a job description, building a tailored resume from the vault, checking the match and picking a design](public/demo/tailor-journey.gif)
 
 [Quickstart](#quickstart) · [Features](#features) · [How the AI works](#how-the-ai-works-and-where-its-allowed-to-fail) · [Architecture](#architecture) · [Roadmap](#roadmap) · [Contributing](CONTRIBUTING.md)
@@ -129,8 +131,8 @@ scripts/          dev launcher, demo GIF recorder
 
 ## Contributing
 
-Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Contributions are accepted under the [CLA](CLA.md).
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Contributions are accepted under the AGPL-3.0, with a sign-off on each commit ([DCO](https://developercertificate.org)).
 
 ## Licence
 
-[AGPL-3.0](LICENSE) © Abhishek Ranjan. You can use, modify and self-host refit freely; if you offer a modified version as a network service, you must share its source under the same licence.
+[AGPL-3.0](LICENSE) © Abhishek Ranjan. You can use, modify and run refit freely; if you offer a modified version as a network service, you must share its source under the same licence. refit itself is a personal, non-commercial project.

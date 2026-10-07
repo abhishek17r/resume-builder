@@ -74,7 +74,7 @@ export default function Landing({ onOpen, onImport }) {
         </dl>
 
         <footer className="mt-14 border-t border-rule pt-5 text-[13px] text-muted">
-          Code on <a href={REPOS.app} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">GitHub</a>.
+          A personal, non-commercial open source project. Free, no ads, no paid plans. Code on <a href={REPOS.app} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">GitHub</a>.
         </footer>
       </main>
     </div>
@@ -107,7 +107,7 @@ const SCREENS = [
 ]
 
 const QUESTIONS = [
-  ['Is it free?', 'Yes. It’s open source (AGPL). The only cost is the AI provider you choose, and only when you use the AI features.'],
+  ['Is it free?', 'Yes, and it stays free. refit is a personal, non-commercial open source project (AGPL): no trial, no paid plans, no ads. The only cost is the AI provider you choose, and only when you use the AI features.'],
   ['Where does my data go?', 'Your resumes stay in your browser’s storage on your laptop. When you use an AI feature, the text it needs goes to the AI provider you picked, with your own key. There’s no account, and no one else’s server in between.'],
   ['Do I need an AI key?', 'No. Editing, designs, the vault, quality checks and PDFs all work without one. You need a key (OpenAI, Anthropic or Gemini) only for tailoring to a job and AI rewrites.'],
   ['Will it make things up?', 'It’s built not to. It can only pick and lightly reword your own bullets, and every AI edit is checked: numbers must match, and most of your words must stay. If an edit fails, you get your original back.'],

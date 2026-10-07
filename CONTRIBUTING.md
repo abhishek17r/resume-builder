@@ -6,7 +6,8 @@ Thanks for helping. refit is two repositories: this app (React + Vite) and the [
 
 - **Bugs:** open an issue with steps to reproduce. For import problems, attach the file (or a version with personal details replaced) — parsing bugs are almost always about a specific layout.
 - **Features:** open an issue first so we can agree on the approach. The product principles are in the README; proposals that fit them land fastest.
-- **Licence:** contributions are accepted under the [AGPL-3.0](LICENSE) and the [Contributor License Agreement](CLA.md). The CLA bot asks you to sign on your first pull request.
+- **Licence:** contributions are accepted under the [AGPL-3.0](LICENSE), the same licence as the project. Sign off each commit to confirm you have the right to contribute it ([Developer Certificate of Origin](https://developercertificate.org)): `git commit -s` adds the `Signed-off-by:` line.
+- **Non-commercial:** refit is a personal project with no paid plans; contributions stay as free and open as the rest of it.
 
 ## Develop
 
